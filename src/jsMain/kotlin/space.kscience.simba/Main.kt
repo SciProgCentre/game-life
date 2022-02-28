@@ -38,9 +38,16 @@ fun main() {
         render(game, context)
     }
 
-    val nextButton = document.getElementById("next") as HTMLButtonElement
-    nextButton.onclick = {
-        game.iterate()
-        render(game, context)
+    val startButton = document.getElementById("start") as HTMLButtonElement
+    startButton.onclick = {
+        window.setInterval({
+            render(game, context)
+            game.iterate()
+        }, 300)
     }
+//    val nextButton = document.getElementById("next") as HTMLButtonElement
+//    nextButton.onclick = {
+//        game.iterate()
+//        render(game, context)
+//    }
 }
