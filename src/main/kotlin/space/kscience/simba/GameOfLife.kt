@@ -1,44 +1,57 @@
 package space.kscience.simba
 
 class GameOfLife(private val n: Int, private val m: Int, init: (Int, Int) -> Boolean = { _, _ -> false }) {
-    var field = Array(n) { i -> BooleanArray(m) { j -> init(i, j) } }
+    private var field: List<Cell>
 
-    fun iterate() {
+    init {
+        val tempField = Array(n) { Array<Cell?>(m) { null } }
+
+        fun getOrCreate(i: Int, j: Int): Cell {
+            return if (tempField[i][j] == null) {
+                Cell(i, j, init(i, j)).apply { tempField[i][j] = this }
+            } else {
+                tempField[i][j]!!
+            }
+        }
+
         for (i in 0 until n) {
             for (j in 0 until n) {
-                val aliveNeighbours = getAliveNeighboursCount(i, j)
-                if (isAlive(i, j)) {
-                    if (aliveNeighbours != 2 && aliveNeighbours != 3) {
-                        field[i][j] = false
-                    }
-                } else if (aliveNeighbours == 3) {
-                    field[i][j] = true
+                val cell = getOrCreate(i, j)
+                for ((k, l) in getNeighboursIds(i, j)) {
+                    cell.addNeighbour(getOrCreate(k, l))
                 }
             }
         }
+
+        field = tempField.flatMap { it.filterNotNull() }
     }
 
-    private fun getAliveNeighboursCount(i: Int, j: Int): Int {
-        return listOf(
-            getValueAt(i - 1, j - 1), getValueAt(i - 1, j), getValueAt(i - 1, j + 1),
-            getValueAt(i, j - 1), getValueAt(i, j), getValueAt(i, j + 1),
-            getValueAt(i + 1, j - 1), getValueAt(i + 1, j), getValueAt(i + 1, j + 1)
-        ).count { it }
+    fun iterate() {
+        field.forEach { it.iterate() }
+        field.forEach { it.endIteration() }
+    }
+
+    private fun getNeighboursIds(i: Int, j: Int): Set<Pair<Int, Int>> {
+        return setOf(
+            cyclicMod(i - 1, n) to cyclicMod(j - 1, m), cyclicMod(i - 1, n) to cyclicMod(j, m), cyclicMod(i - 1, n) to cyclicMod(j + 1, m),
+            cyclicMod(i, n) to cyclicMod(j - 1, m), cyclicMod(i, n) to cyclicMod(j, m), cyclicMod(i, n) to cyclicMod(j + 1, m),
+            cyclicMod(i + 1, n) to cyclicMod(j - 1, m), cyclicMod(i + 1, n) to cyclicMod(j, m), cyclicMod(i + 1, n) to cyclicMod(j + 1, m)
+        )
     }
 
     private fun cyclicMod(i: Int, n: Int): Int {
         return if (i >= 0) i % n else n + i % n
     }
 
-    private fun getValueAt(i: Int, j: Int): Boolean {
-        return field[cyclicMod(i, n)][cyclicMod(j, m)]
-    }
-
-    private fun isAlive(i: Int, j: Int) = field[i][j]
-
     override fun toString(): String {
-        return field.joinToString(separator = "\n", postfix = "\n") { array ->
-            array.joinToString(separator = "") { if (it) "X" else "O" }
+        val builder = StringBuilder()
+        for (i in 0 until n) {
+            for (j in 0 until n) {
+                builder.append(if (field[i * n + j].isAlive()) "X" else "O")
+            }
+            builder.append("\n")
         }
+        builder.append("\n")
+        return builder.toString()
     }
 }
