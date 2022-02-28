@@ -2,17 +2,17 @@ package space.kscience.simba
 
 class GameOfLife(
     private val n: Int, private val m: Int,
-    private val nextStep: (CellState) -> Boolean,
-    init: (Int, Int) -> Boolean = { _, _ -> false }
+    private val nextStep: (CellState, CellEnvironmentState) -> CellState,
+    init: (Int, Int) -> CellState = { _, _ -> CellState(false) }
 ) {
-    private var field: List<Cell>
+    private var field: List<ClassicCell>
 
     init {
-        val tempField = Array(n) { Array<Cell?>(m) { null } }
+        val tempField = Array(n) { Array<ClassicCell?>(m) { null } }
 
-        fun getOrCreate(i: Int, j: Int): Cell {
+        fun getOrCreate(i: Int, j: Int): ClassicCell {
             return if (tempField[i][j] == null) {
-                Cell(i, j, init(i, j)).apply { tempField[i][j] = this }
+                ClassicCell(i, j, init(i, j)).apply { tempField[i][j] = this }
             } else {
                 tempField[i][j]!!
             }
