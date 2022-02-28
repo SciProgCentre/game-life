@@ -1,5 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.6.10"
+    kotlin("multiplatform") version "1.6.10"
+    application
 }
 
 group = "space.kscience.simba"
@@ -9,6 +10,36 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation(kotlin("stdlib"))
+kotlin {
+    jvm {
+        withJava()
+    }
+
+    js {
+        browser {
+            binaries.executable()
+        }
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                dependencies {
+                    implementation(kotlin("stdlib"))
+                }
+            }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+
+            }
+        }
+
+        val jsMain by getting {
+            dependencies {
+
+            }
+        }
+    }
 }
