@@ -1,6 +1,10 @@
 package space.kscience.simba
 
-class GameOfLife(private val n: Int, private val m: Int, init: (Int, Int) -> Boolean = { _, _ -> false }) {
+class GameOfLife(
+    private val n: Int, private val m: Int,
+    private val nextStep: (CellState) -> Boolean,
+    init: (Int, Int) -> Boolean = { _, _ -> false }
+) {
     private var field: List<Cell>
 
     init {
@@ -26,11 +30,6 @@ class GameOfLife(private val n: Int, private val m: Int, init: (Int, Int) -> Boo
         field = tempField.flatMap { it.filterNotNull() }
     }
 
-    fun iterate() {
-        field.forEach { it.iterate() }
-        field.forEach { it.endIteration() }
-    }
-
     private fun getNeighboursIds(i: Int, j: Int): Set<Pair<Int, Int>> {
         return setOf(
             cyclicMod(i - 1, n) to cyclicMod(j - 1, m), cyclicMod(i - 1, n) to cyclicMod(j, m), cyclicMod(i - 1, n) to cyclicMod(j + 1, m),
@@ -41,6 +40,11 @@ class GameOfLife(private val n: Int, private val m: Int, init: (Int, Int) -> Boo
 
     private fun cyclicMod(i: Int, n: Int): Int {
         return if (i >= 0) i % n else n + i % n
+    }
+
+    fun iterate() {
+        field.forEach { it.iterate(nextStep) }
+        field.forEach { it.endIteration() }
     }
 
     override fun toString(): String {
