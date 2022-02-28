@@ -1,8 +1,21 @@
 package space.kscience.simba
 
+fun classicNextStep(state: CellState, environmentState: CellEnvironmentState): CellState {
+    val aliveNeighbours = environmentState.neighbours.count { it.isAlive() }
+    if (state.isAlive) {
+        if (aliveNeighbours != 2 && aliveNeighbours != 3) {
+            return CellState(false)
+        }
+    } else if (aliveNeighbours == 3) {
+        return CellState(true)
+    }
+
+    return state
+}
+
 class GameOfLife(
     private val n: Int, private val m: Int,
-    private val nextStep: (CellState, CellEnvironmentState) -> CellState,
+    private val nextStep: (CellState, CellEnvironmentState) -> CellState= ::classicNextStep,
     init: (Int, Int) -> CellState = { _, _ -> CellState(false) }
 ) {
     private var field: List<ClassicCell>
@@ -19,7 +32,7 @@ class GameOfLife(
         }
 
         for (i in 0 until n) {
-            for (j in 0 until n) {
+            for (j in 0 until m) {
                 val cell = getOrCreate(i, j)
                 for ((k, l) in getNeighboursIds(i, j)) {
                     cell.addNeighbour(getOrCreate(k, l))
@@ -47,10 +60,14 @@ class GameOfLife(
         field.forEach { it.endIteration() }
     }
 
+    fun observe(process: (ClassicCell) -> Unit) {
+        field.forEach { process(it) }
+    }
+
     override fun toString(): String {
         val builder = StringBuilder()
         for (i in 0 until n) {
-            for (j in 0 until n) {
+            for (j in 0 until m) {
                 builder.append(if (field[i * n + j].isAlive()) "X" else "O")
             }
             builder.append("\n")
