@@ -15,10 +15,15 @@ fun classicNextStep(state: CellState, environmentState: CellEnvironmentState): C
 
 class GameOfLife(
     private val n: Int, private val m: Int,
-    private val nextStep: (CellState, CellEnvironmentState) -> CellState= ::classicNextStep,
+    private val nextStep: (CellState, CellEnvironmentState) -> CellState = ::classicNextStep,
     init: (Int, Int) -> CellState = { _, _ -> CellState(false) }
 ) {
     private var field: List<ClassicCell>
+    private val neighborsIndices = setOf(
+        Pair(-1, -1), Pair(-1, 0), Pair(-1, 1),
+        Pair(0, -1), Pair(0, 0), Pair(0, 1),
+        Pair(1, -1), Pair(1, 0), Pair(1, 1)
+    )
 
     init {
         val tempField = Array(n) { Array<ClassicCell?>(m) { null } }
@@ -43,12 +48,8 @@ class GameOfLife(
         field = tempField.flatMap { it.filterNotNull() }
     }
 
-    private fun getNeighboursIds(i: Int, j: Int): Set<Pair<Int, Int>> {
-        return setOf(
-            cyclicMod(i - 1, n) to cyclicMod(j - 1, m), cyclicMod(i - 1, n) to cyclicMod(j, m), cyclicMod(i - 1, n) to cyclicMod(j + 1, m),
-            cyclicMod(i, n) to cyclicMod(j - 1, m), cyclicMod(i, n) to cyclicMod(j, m), cyclicMod(i, n) to cyclicMod(j + 1, m),
-            cyclicMod(i + 1, n) to cyclicMod(j - 1, m), cyclicMod(i + 1, n) to cyclicMod(j, m), cyclicMod(i + 1, n) to cyclicMod(j + 1, m)
-        )
+    private fun getNeighboursIds(i: Int, j: Int): List<Pair<Int, Int>> {
+        return neighborsIndices.map { cyclicMod(i - it.first, n) to cyclicMod(j - it.second, m) }
     }
 
     private fun cyclicMod(i: Int, n: Int): Int {
