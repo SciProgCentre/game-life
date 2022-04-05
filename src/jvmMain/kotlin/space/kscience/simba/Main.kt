@@ -2,6 +2,7 @@ package space.kscience.simba
 
 import akka.actor.typed.ActorSystem
 import kotlin.random.Random
+import kotlin.system.exitProcess
 
 //fun main() {
 //    val random = Random(0)
@@ -16,8 +17,8 @@ import kotlin.random.Random
 
 fun actorsToString(field: List<ActorClassicCell>) {
     val builder = StringBuilder()
-    val n = field.maxOf { it.i }
-    val m = field.maxOf { it.j }
+    val n = field.maxOf { it.i } + 1
+    val m = field.maxOf { it.j } + 1
 
     for (i in 0 until n) {
         for (j in 0 until m) {

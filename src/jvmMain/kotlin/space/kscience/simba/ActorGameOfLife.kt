@@ -12,6 +12,8 @@ fun <T: ActorMessage<T, E>, E: AbstractBehavior<T>, M: T> ReceiveBuilder<T>.onMe
     return this.onMessage(type) { it.process(actor) }!!
 }
 
+typealias RenderFun = (List<ActorClassicCell>) -> Unit
+
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>,
     val n: Int, val m: Int
@@ -19,10 +21,11 @@ class MainActor private constructor(
     lateinit var field: List<ActorRef<CellActor.Companion.CellActorMessage>>
     val statesByTimestamp = mutableMapOf<Long, MutableList<ActorClassicCell>>()
     private var timestamp = 0L
+    val renderingQueue = mutableListOf<RenderFun>()
 
     private val neighborsIndices = setOf(
         Pair(-1, -1), Pair(-1, 0), Pair(-1, 1),
-        Pair(0, -1), Pair(0, 0), Pair(0, 1),
+        Pair(0, -1), Pair(0, 1),
         Pair(1, -1), Pair(1, 0), Pair(1, 1)
     )
 
@@ -83,17 +86,21 @@ class MainActor private constructor(
                 actor.statesByTimestamp
                     .getOrPut(timestamp) { mutableListOf() }
                     .add(state)
+                if (actor.renderingQueue.isNotEmpty()) {
+                    actor.context.self.tell(Render(actor.renderingQueue.first()))
+                }
                 return actor
             }
         }
 
-        class Render(val render: (List<ActorClassicCell>) -> Unit): MainActorMessage {
+        class Render(val render: RenderFun): MainActorMessage {
             override fun process(actor: MainActor): MainActor {
                 if (actor.statesByTimestamp[actor.timestamp]?.size != actor.n * actor.m) {
-                    actor.context.self.tell(this)
+                    actor.renderingQueue += render
                 } else {
+                    actor.renderingQueue.removeAt(0)
                     render(actor.statesByTimestamp[actor.timestamp]!!)
-                    actor.statesByTimestamp.remove(actor.timestamp++)
+                    actor.timestamp++
                 }
                 return actor
             }
@@ -134,7 +141,8 @@ class CellActor private constructor(
 
         class Iterate: CellActorMessage {
             override fun process(actor: CellActor): CellActor {
-                actor.neighbours.forEach { it.tell(PassState(actor.state, actor.timestamp++)) }
+                actor.neighbours.forEach { it.tell(PassState(actor.state, actor.timestamp)) }
+                actor.timestamp++
                 return actor
             }
         }
