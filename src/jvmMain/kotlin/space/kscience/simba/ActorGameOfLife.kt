@@ -3,6 +3,7 @@ package space.kscience.simba
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
+import kotlinx.coroutines.runBlocking
 
 interface ActorMessage<T: ActorMessage<T, E>, E: AbstractBehavior<T>> {
     fun process(actor: E): E
@@ -12,7 +13,7 @@ fun <T: ActorMessage<T, E>, E: AbstractBehavior<T>, M: T> ReceiveBuilder<T>.onMe
     return this.onMessage(type) { it.process(actor) }!!
 }
 
-typealias RenderFun = (List<ActorClassicCell>) -> Unit
+typealias RenderFun = suspend (List<ActorClassicCell>?) -> Unit
 
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>,
@@ -21,7 +22,7 @@ class MainActor private constructor(
     lateinit var field: List<ActorRef<CellActor.Companion.CellActorMessage>>
     val statesByTimestamp = mutableMapOf<Long, MutableList<ActorClassicCell>>()
     private var timestamp = 0L
-    val renderingQueue = mutableListOf<RenderFun>()
+    val renderingQueue = mutableListOf<Render>()
 
     private val neighborsIndices = setOf(
         Pair(-1, -1), Pair(-1, 0), Pair(-1, 1),
@@ -87,20 +88,33 @@ class MainActor private constructor(
                     .getOrPut(timestamp) { mutableListOf() }
                     .add(state)
                 if (actor.renderingQueue.isNotEmpty()) {
-                    actor.context.self.tell(Render(actor.renderingQueue.first()))
+                    actor.context.self.tell(actor.renderingQueue.first())
                 }
                 return actor
             }
         }
 
-        class Render(val render: RenderFun): MainActorMessage {
+        class Render(
+            private val iteration: Long = -1, private val returnIfResultIsNotReady: Boolean, val render: RenderFun
+        ): MainActorMessage {
             override fun process(actor: MainActor): MainActor {
-                if (actor.statesByTimestamp[actor.timestamp]?.size != actor.n * actor.m) {
-                    actor.renderingQueue += render
+                val timestamp = iteration.takeIf { it != -1L } ?: actor.timestamp
+                if (actor.statesByTimestamp[timestamp]?.size != actor.n * actor.m) {
+                    // result IS NOT ready
+                    if (!returnIfResultIsNotReady) {
+                        actor.renderingQueue += this
+                    } else {
+                        runBlocking { render(null) }
+                    }
                 } else {
-                    actor.renderingQueue.removeAt(0)
-                    render(actor.statesByTimestamp[actor.timestamp]!!)
-                    actor.timestamp++
+                    // result IS ready
+                    if (returnIfResultIsNotReady) {
+                        actor.renderingQueue.removeFirstOrNull()
+                    }
+                    runBlocking { render(actor.statesByTimestamp[timestamp]!!) }
+                    if (iteration == -1L) {
+                        actor.timestamp++
+                    }
                 }
                 return actor
             }

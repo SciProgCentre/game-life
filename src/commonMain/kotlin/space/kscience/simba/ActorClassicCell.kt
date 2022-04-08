@@ -1,9 +1,12 @@
 package space.kscience.simba
 
+@kotlinx.serialization.Serializable
 data class ActorCellState(var isAlive: Boolean): ObjectState
 
+@kotlinx.serialization.Serializable
 data class ActorCellEnvironmentState(val neighbours: MutableList<ActorClassicCell>) : EnvironmentState {}
 
+@kotlinx.serialization.Serializable
 class ActorClassicCell(val i: Int, val j: Int, private var state: ActorCellState): Cell<ActorCellEnvironmentState, ActorCellState>() {
     private val environmentState = ActorCellEnvironmentState(mutableListOf())
     private var oldState = state

@@ -1,11 +1,22 @@
+package space.kscience.simba
+
+import io.ktor.client.*
+import io.ktor.client.features.json.*
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
-import space.kscience.simba.CellState
-import space.kscience.simba.GameOfLife
-import kotlin.random.Random
+
+private val endpoint = window.location.origin
+private val scope = MainScope()
+private val jsonClient = HttpClient {
+    install(JsonFeature) { serializer = KotlinxSerializer() }
+}
 
 const val width = 250
 const val height = 100
@@ -20,31 +31,35 @@ fun initializeCanvas(width: Int, height: Int): CanvasRenderingContext2D {
     return context
 }
 
-fun render(game: GameOfLife, context: CanvasRenderingContext2D) {
+fun render(field: List<ActorClassicCell>, context: CanvasRenderingContext2D) {
     val doubleSize = cellSize.toDouble()
-    game.observe {
+    field.forEach {
         val color = if (it.isAlive()) "#000000" else "#FFFFFF"
         context.fillStyle = color
         context.fillRect(it.i * doubleSize, it.j * doubleSize, doubleSize, doubleSize)
     }
 }
 
+suspend fun getLifeData(): List<ActorClassicCell> {
+    return jsonClient.get("$endpoint/status/0")
+}
+
 fun main() {
     val context = initializeCanvas(width * cellSize, height * cellSize)
-    val random = Random(0)
-    val game = GameOfLife(width, height) { _, _ -> CellState(random.nextBoolean()) }
 
     window.onload = {
-        render(game, context)
+        scope.launch {
+            render(getLifeData(), context)
+        }
     }
 
-    val startButton = document.getElementById("start") as HTMLButtonElement
-    startButton.onclick = {
-        window.setInterval({
-            render(game, context)
-            game.iterate()
-        }, 300)
-    }
+//    val startButton = document.getElementById("start") as HTMLButtonElement
+//    startButton.onclick = {
+//        window.setInterval({
+//            render(game, context)
+//            game.iterate()
+//        }, 300)
+//    }
 //    val nextButton = document.getElementById("next") as HTMLButtonElement
 //    nextButton.onclick = {
 //        game.iterate()
