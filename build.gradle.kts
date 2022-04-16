@@ -12,6 +12,7 @@ val serializationVersion = "1.3.2"
 val ktorVersion = "1.6.7"
 val reactVersion = "17.0.2-pre.299-kotlin-1.6.10"
 val kmongoVersion = "4.5.1"
+val coroutinesVersion = "1.6.1"
 
 group = "space.kscience.simba"
 version = "1.0-SNAPSHOT"
@@ -58,7 +59,7 @@ kotlin {
                 implementation("org.litote.kmongo:kmongo-coroutine:$kmongoVersion")
                 implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
 
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 //                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
             }
         }
