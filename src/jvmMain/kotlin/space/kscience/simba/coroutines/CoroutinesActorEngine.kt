@@ -5,7 +5,6 @@ import space.kscience.simba.*
 import space.kscience.simba.engine.Actor
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.engine.EngineSystem
-import space.kscience.simba.systems.PrintSystem
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -25,8 +24,7 @@ class CoroutinesActorEngine(
     override val coroutineContext: CoroutineContext
         get() = EmptyCoroutineContext
 
-    override val systems: List<EngineSystem>
-        get() = listOf(PrintSystem())
+    override val systems: MutableList<EngineSystem> = mutableListOf()
 
     init {
         fun cyclicMod(i: Int, n: Int): Int {

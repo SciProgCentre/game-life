@@ -1,6 +1,5 @@
 package space.kscience.simba
 
-import akka.actor.typed.ActorSystem
 import io.ktor.application.*
 import io.ktor.features.*
 import io.ktor.http.*
@@ -11,15 +10,12 @@ import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import space.kscience.simba.akka.actor.AkkaActorEngine
-import space.kscience.simba.akka.actor.MainActor
 import space.kscience.simba.engine.Engine
-import kotlin.coroutines.resume
+import space.kscience.simba.systems.PrintSystem
 import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 
-suspend fun actorsToString(field: List<ActorClassicCell>?, out: suspend (String) -> Unit) {
-    field ?: return out("")
-
+fun actorsToString(field: List<ActorClassicCell>): String {
     val builder = StringBuilder()
     val n = field.maxOf { it.i } + 1
     val m = field.maxOf { it.j } + 1
@@ -31,14 +27,16 @@ suspend fun actorsToString(field: List<ActorClassicCell>?, out: suspend (String)
         builder.append("\n")
     }
     builder.append("\n")
-    out(builder.toString())
+    return builder.toString()
 }
 
 fun main() {
     val random = Random(0)
-    val simulationEngine: Engine = AkkaActorEngine(10, 10, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
-//    val mainActor = ActorSystem.create(MainActor.create(), "gameOfLife")
-//    mainActor.tell(MainActor.Companion.SpawnCells(10, 10, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep))
+    val (n, m) = 10 to 10
+
+    val simulationEngine: Engine = AkkaActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
+    val printSystem = PrintSystem(n * m)
+    simulationEngine.addNewSystem(printSystem)
 
     embeddedServer(Netty, 9090) {
         install(ContentNegotiation) {
@@ -64,27 +62,10 @@ fun main() {
                 resources("")
             }
 
-            get("/render") {
-//                suspendCoroutine<Unit> { continuation ->
-//                    mainActor.tell(MainActor.Companion.Render(iteration = -1, returnIfResultIsNotReady = true) { cells ->
-//                        actorsToString(cells) {
-//                            call.respondText(it)
-//                            continuation.resume(Unit)
-//                        }
-//                    })
-//                }
-//                mainActor.tell(MainActor.Companion.Iterate())
-//                mainActor.tell(MainActor.Companion.Render(::actorsToString))
-            }
-
             get("/status/{iteration}") {
-//                suspendCoroutine<Unit> { continuation ->
-//                    val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
-//                    mainActor.tell(MainActor.Companion.Render(iteration, returnIfResultIsNotReady = true) { cells ->
-//                        call.respond(cells ?: emptyList())
-//                        continuation.resume(Unit)
-//                    })
-//                }
+                simulationEngine.iterate()
+                val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
+                call.respond(printSystem.render(iteration + 1))
             }
         }
     }.start(wait = true)

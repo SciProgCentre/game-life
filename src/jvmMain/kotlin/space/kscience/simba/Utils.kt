@@ -11,8 +11,6 @@ fun <T: ActorMessage<T, E>, E: AbstractBehavior<T>, M: T> ReceiveBuilder<T>.onMe
     return this.onMessage(type) { it.process(actor) }!!
 }
 
-typealias RenderFun = suspend (List<ActorClassicCell>?) -> Unit
-
 fun actorNextStep(state: ActorCellState, environmentState: ActorCellEnvironmentState): ActorCellState {
     val aliveNeighbours = environmentState.neighbours.count { it.isAlive() }
     if (state.isAlive) {
