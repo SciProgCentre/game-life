@@ -14,64 +14,56 @@ class CellActor(
     override val engine: Engine,
     state: ActorClassicCell,
     nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
-) : Actor<AkkaCellActor.Companion.CellActorMessage> {
+) : Actor<GameOfLifeMessage> {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)
-    lateinit var akkaCellActorRef: ActorRef<AkkaCellActor.Companion.CellActorMessage>
+    lateinit var akkaCellActorRef: ActorRef<GameOfLifeMessage>
 
-    override fun handle(msg: AkkaCellActor.Companion.CellActorMessage) {
+    override fun handle(msg: GameOfLifeMessage) {
         akkaCellActorRef.tell(msg)
     }
 }
 
 class AkkaCellActor private constructor(
-    context: ActorContext<CellActorMessage>,
-    val state: ActorClassicCell,
-    val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
-): AbstractBehavior<AkkaCellActor.Companion.CellActorMessage>(context) {
+    context: ActorContext<GameOfLifeMessage>,
+    private val state: ActorClassicCell,
+    private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+): AbstractBehavior<GameOfLifeMessage>(context) {
     private var timestamp = 1L
-    private val neighbours = mutableListOf<Actor<CellActorMessage>>()
+    private val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
 
-    override fun createReceive(): Receive<CellActorMessage> {
+    override fun createReceive(): Receive<GameOfLifeMessage> {
         return newReceiveBuilder()
-            .onMessage(AddNeighbour::class.java, this)
-            .onMessage(Iterate::class.java, this)
-            .onMessage(PassState::class.java, this)
+            .onMessage(AddNeighbour::class.java, ::onAddNeighbourMessage)
+            .onMessage(Iterate::class.java, ::onIterateMessage)
+            .onMessage(PassState::class.java, ::onPassStateMessage)
             .build()
     }
 
+    private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<GameOfLifeMessage> {
+        neighbours.add(msg.cellActor);
+        return this
+    }
+
+    private fun onIterateMessage(msg: Iterate): Behavior<GameOfLifeMessage> {
+        neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
+        timestamp++
+        return this
+    }
+
+    private fun onPassStateMessage(msg: PassState): Behavior<GameOfLifeMessage> {
+        state.addNeighboursState(msg.state)
+        if (state.isReadyForIteration(neighbours.size)) {
+            state.iterate(nextStep)
+            state.endIteration()
+        }
+        return this
+    }
+
     companion object {
-        interface CellActorMessage: ActorMessage<CellActorMessage, AkkaCellActor>
-
-        class AddNeighbour(val cellActor: Actor<CellActorMessage>): CellActorMessage {
-            override fun process(actor: AkkaCellActor): AkkaCellActor {
-                actor.neighbours.add(this.cellActor);
-                return actor
-            }
-        }
-
-        class Iterate: CellActorMessage {
-            override fun process(actor: AkkaCellActor): AkkaCellActor {
-                actor.neighbours.forEach { it.handleAndCallSystems(PassState(actor.state, actor.timestamp)) }
-                actor.timestamp++
-                return actor
-            }
-        }
-
-        class PassState(val state: ActorClassicCell, val timestamp: Long): CellActorMessage {
-            override fun process(actor: AkkaCellActor): AkkaCellActor {
-                actor.state.addNeighboursState(state)
-                if (actor.state.isReadyForIteration(actor.neighbours.size)) {
-                    actor.state.iterate(actor.nextStep)
-                    actor.state.endIteration()
-                }
-                return actor
-            }
-        }
-
         fun create(
             state: ActorClassicCell,
             nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
-        ): Behavior<CellActorMessage> {
+        ): Behavior<GameOfLifeMessage> {
             return Behaviors.setup { AkkaCellActor(it, state, nextStep) }
         }
     }
