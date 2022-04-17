@@ -18,7 +18,7 @@ class PrintSystem(private val fieldSize: Int) : EngineSystem {
         if (msg is PassState) {
             statesByTimestamp
                 .getOrPut(msg.timestamp) { ConcurrentSkipListSet() }
-                .add(msg.state.copy())
+                .add(msg.state)
 
             if (statesByTimestamp[msg.timestamp]?.size == fieldSize) {
                 renderAvailable(msg.timestamp)

@@ -13,27 +13,58 @@ import kotlin.coroutines.CoroutineContext
 class CoroutinesCellActor(
     override val engine: Engine,
     override val coroutineContext: CoroutineContext,
-    private val state: ActorClassicCell,
+    private var state: ActorClassicCell,
     private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
 ) : Actor<GameOfLifeMessage>, CoroutineScope {
-    private var timestamp = 1L
-    private val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
-
     private val actor = actor<GameOfLifeMessage> {
+        var timestamp = 0L
+        var iterations = 0
+        val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
+        val earlyStates = linkedMapOf<Long, MutableList<ActorClassicCell>>()
+
+        var internalState = state.copy()
+
+        fun onAddNeighbourMessage(msg: AddNeighbour) {
+            neighbours.add(msg.cellActor)
+        }
+
+        fun forceIteration() {
+            timestamp++
+            neighbours.forEach { it.handleAndCallSystems(PassState(internalState, timestamp)) }
+            earlyStates.remove(timestamp)?.forEach {
+                this@CoroutinesCellActor.handle(PassState(it, timestamp))
+            }
+        }
+
+        fun onIterateMessage(msg: Iterate) {
+            if (iterations++ != 0) return
+            forceIteration()
+        }
+
+        fun onPassStateMessage(msg: PassState) {
+            if (msg.timestamp != timestamp) {
+                earlyStates
+                    .getOrPut(msg.timestamp) { mutableListOf() }
+                    .add(msg.state)
+                return
+            }
+
+            internalState.addNeighboursState(msg.state)
+            if (internalState.isReadyForIteration(neighbours.size)) {
+                internalState = internalState.iterate(nextStep)
+
+                iterations--
+                if (iterations > 0) {
+                    forceIteration()
+                }
+            }
+        }
+
         for (msg in channel) { // iterate over incoming messages
             when (msg) {
-                is AddNeighbour -> neighbours.add(msg.cellActor)
-                is Iterate -> {
-                    neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
-                    timestamp++
-                }
-                is PassState -> {
-                    state.addNeighboursState(msg.state)
-                    if (state.isReadyForIteration(neighbours.size)) {
-                        state.iterate(nextStep)
-                        state.endIteration()
-                    }
-                }
+                is AddNeighbour -> onAddNeighbourMessage(msg)
+                is Iterate -> onIterateMessage(msg)
+                is PassState -> onPassStateMessage(msg)
             }
         }
     }

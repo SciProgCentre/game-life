@@ -1,25 +1,19 @@
 package space.kscience.simba
 
 @kotlinx.serialization.Serializable
-data class ActorCellState(var isAlive: Boolean): ObjectState
+data class ActorCellState(val isAlive: Boolean): ObjectState
 
-@kotlinx.serialization.Serializable
 data class ActorCellEnvironmentState(val neighbours: MutableList<ActorClassicCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
 data class ActorClassicCell(
-    val i: Int, val j: Int, private var state: ActorCellState
+    val i: Int, val j: Int, private val state: ActorCellState
 ): Cell<ActorCellEnvironmentState, ActorCellState>(), Comparable<ActorClassicCell> {
+    @kotlinx.serialization.Transient
     private val environmentState = ActorCellEnvironmentState(mutableListOf())
-    private var oldState = state
 
-    override fun iterate(convert: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState) {
-        state = convert(state, environmentState)
-    }
-
-    override fun endIteration() {
-        environmentState.neighbours.clear()
-        oldState = state.copy()
+    override fun iterate(convert: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState): ActorClassicCell {
+        return ActorClassicCell(i, j, convert(state, environmentState))
     }
 
     fun addNeighboursState(cell: ActorClassicCell) {
@@ -27,7 +21,7 @@ data class ActorClassicCell(
     }
 
     fun isAlive(): Boolean {
-        return oldState.isAlive
+        return state.isAlive
     }
 
     fun isReadyForIteration(expectedCount: Int): Boolean {

@@ -37,8 +37,8 @@ class CoroutinesActorEngine(
 
         val tempField = List(n) { i -> List(m) { j -> ActorClassicCell(i, j, init(i, j)) } }
 
-        field = tempField.mapIndexed { i, list ->
-            list.mapIndexed { j, state ->
+        field = tempField.mapIndexed { _, list ->
+            list.mapIndexed { _, state ->
                 CoroutinesCellActor(this, coroutineContext, state, nextStep)
             }
         }.flatten()

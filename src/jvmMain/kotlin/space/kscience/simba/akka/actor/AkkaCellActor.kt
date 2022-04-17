@@ -12,7 +12,7 @@ import space.kscience.simba.engine.Engine
 
 class CellActor(
     override val engine: Engine,
-    state: ActorClassicCell,
+    private val state: ActorClassicCell,
     nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
 ) : Actor<GameOfLifeMessage> {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)
@@ -21,15 +21,21 @@ class CellActor(
     override fun handle(msg: GameOfLifeMessage) {
         akkaCellActorRef.tell(msg)
     }
+
+    override fun toString(): String {
+        return state.toString()
+    }
 }
 
 class AkkaCellActor private constructor(
     context: ActorContext<GameOfLifeMessage>,
-    private val state: ActorClassicCell,
+    private var state: ActorClassicCell,
     private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
 ): AbstractBehavior<GameOfLifeMessage>(context) {
-    private var timestamp = 1L
+    private var timestamp = 0L
+    private var iterations = 0
     private val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
+    private val earlyStates = linkedMapOf<Long, MutableList<ActorClassicCell>>()
 
     override fun createReceive(): Receive<GameOfLifeMessage> {
         return newReceiveBuilder()
@@ -40,21 +46,40 @@ class AkkaCellActor private constructor(
     }
 
     private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<GameOfLifeMessage> {
-        neighbours.add(msg.cellActor);
+        neighbours.add(msg.cellActor)
         return this
     }
 
     private fun onIterateMessage(msg: Iterate): Behavior<GameOfLifeMessage> {
-        neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
+        if (iterations++ != 0) return this
+        return forceIteration()
+    }
+
+    private fun forceIteration(): Behavior<GameOfLifeMessage> {
         timestamp++
+        neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
+        earlyStates.remove(timestamp)?.forEach {
+            context.self.tell(PassState(it, timestamp))
+        }
         return this
     }
 
     private fun onPassStateMessage(msg: PassState): Behavior<GameOfLifeMessage> {
+        if (msg.timestamp != timestamp) {
+            earlyStates
+                .getOrPut(msg.timestamp) { mutableListOf() }
+                .add(msg.state)
+            return this
+        }
+
         state.addNeighboursState(msg.state)
         if (state.isReadyForIteration(neighbours.size)) {
-            state.iterate(nextStep)
-            state.endIteration()
+            state = state.iterate(nextStep)
+
+            iterations--
+            if (iterations > 0) {
+                forceIteration()
+            }
         }
         return this
     }
