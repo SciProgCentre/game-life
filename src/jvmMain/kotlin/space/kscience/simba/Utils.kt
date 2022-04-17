@@ -23,3 +23,18 @@ fun actorNextStep(state: ActorCellState, environmentState: ActorCellEnvironmentS
 
     return state
 }
+
+fun actorsToString(field: List<ActorClassicCell>): String {
+    val builder = StringBuilder()
+    val n = field.maxOf { it.i } + 1
+    val m = field.maxOf { it.j } + 1
+
+    for (i in 0 until n) {
+        for (j in 0 until m) {
+            builder.append(if (field[i * n + j].isAlive()) "X" else "O")
+        }
+        builder.append("\n")
+    }
+    builder.append("\n")
+    return builder.toString()
+}

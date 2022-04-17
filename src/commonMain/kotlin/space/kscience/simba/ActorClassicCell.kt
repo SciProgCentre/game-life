@@ -7,7 +7,7 @@ data class ActorCellState(var isAlive: Boolean): ObjectState
 data class ActorCellEnvironmentState(val neighbours: MutableList<ActorClassicCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
-class ActorClassicCell(
+data class ActorClassicCell(
     val i: Int, val j: Int, private var state: ActorCellState
 ): Cell<ActorCellEnvironmentState, ActorCellState>(), Comparable<ActorClassicCell> {
     private val environmentState = ActorCellEnvironmentState(mutableListOf())

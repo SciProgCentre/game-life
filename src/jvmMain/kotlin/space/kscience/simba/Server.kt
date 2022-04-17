@@ -10,33 +10,24 @@ import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import space.kscience.simba.akka.actor.AkkaActorEngine
+import space.kscience.simba.coroutines.CoroutinesActorEngine
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.systems.PrintSystem
-import kotlin.coroutines.suspendCoroutine
 import kotlin.random.Random
 
-fun actorsToString(field: List<ActorClassicCell>): String {
-    val builder = StringBuilder()
-    val n = field.maxOf { it.i } + 1
-    val m = field.maxOf { it.j } + 1
-
-    for (i in 0 until n) {
-        for (j in 0 until m) {
-            builder.append(if (field[i * n + j].isAlive()) "X" else "O")
-        }
-        builder.append("\n")
-    }
-    builder.append("\n")
-    return builder.toString()
+private fun getEngine(n: Int, m: Int, random: Random): Engine {
+    return AkkaActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
+//    return CoroutinesActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
 }
 
 fun main() {
     val random = Random(0)
     val (n, m) = 10 to 10
 
-    val simulationEngine: Engine = AkkaActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
+    val simulationEngine = getEngine(n, m, random)
     val printSystem = PrintSystem(n * m)
     simulationEngine.addNewSystem(printSystem)
+    simulationEngine.iterate()
 
     embeddedServer(Netty, 9090) {
         install(ContentNegotiation) {
@@ -65,7 +56,7 @@ fun main() {
             get("/status/{iteration}") {
                 simulationEngine.iterate()
                 val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
-                call.respond(printSystem.render(iteration + 1))
+                call.respond(printSystem.render(iteration))
             }
         }
     }.start(wait = true)

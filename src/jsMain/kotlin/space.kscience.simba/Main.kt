@@ -40,29 +40,31 @@ fun render(field: List<ActorClassicCell>, context: CanvasRenderingContext2D) {
     }
 }
 
-suspend fun getLifeData(): List<ActorClassicCell> {
-    return jsonClient.get("$endpoint/status/0")
+suspend fun getLifeData(iteration: Long): List<ActorClassicCell> {
+    return jsonClient.get("$endpoint/status/$iteration")
 }
 
 fun main() {
     val context = initializeCanvas(width * cellSize, height * cellSize)
+    var iteration = 1L
 
     window.onload = {
         scope.launch {
-            render(getLifeData(), context)
+            render(getLifeData(iteration), context)
         }
     }
 
-//    val startButton = document.getElementById("start") as HTMLButtonElement
-//    startButton.onclick = {
-//        window.setInterval({
-//            render(game, context)
-//            game.iterate()
-//        }, 300)
-//    }
-//    val nextButton = document.getElementById("next") as HTMLButtonElement
-//    nextButton.onclick = {
-//        game.iterate()
-//        render(game, context)
-//    }
+    val startButton = document.getElementById("start") as HTMLButtonElement
+    startButton.onclick = {
+        window.setInterval({
+            scope.launch { render(getLifeData(++iteration), context) }
+        }, 300)
+    }
+
+    val nextButton = document.getElementById("next") as HTMLButtonElement
+    nextButton.onclick = {
+        scope.launch {
+            render(getLifeData(++iteration), context)
+        }
+    }
 }

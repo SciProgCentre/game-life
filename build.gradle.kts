@@ -60,7 +60,6 @@ kotlin {
                 implementation("org.litote.kmongo:kmongo-coroutine-serialization:$kmongoVersion")
 
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
-//                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$coroutinesVersion")
             }
         }
 
