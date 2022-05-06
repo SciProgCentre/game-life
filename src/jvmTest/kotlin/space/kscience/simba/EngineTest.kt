@@ -10,9 +10,11 @@ import kotlin.random.Random
 import kotlin.test.assertEquals
 
 class EngineTest {
-    private val random = Random(0)
     private val n = 7
     private val m = 7
+
+    private val bigN = 100
+    private val bigM = 100
 
     @Test
     fun testAkkaGameOfLife() {
@@ -36,6 +38,32 @@ class EngineTest {
     fun testKotlinActorsGameOfLifeAfterIterations() {
         val simulationEngine = CoroutinesActorEngine(n, m, { i, j -> ActorCellState(i in 2..4 && j in 2..4) }, ::actorNextStep)
         checkEngineCorrectnessAfterIterations(simulationEngine)
+    }
+
+    @Test
+    fun testEnginesEquality() {
+        val random1 = Random(0)
+        val random2 = Random(0)
+        val iterations = 10
+
+        val akkaEngine = AkkaActorEngine(bigN, bigM, { _, _ -> ActorCellState(random1.nextBoolean()) }, ::actorNextStep)
+        val coroutinesEngine = CoroutinesActorEngine(bigN, bigM, { _, _ -> ActorCellState(random2.nextBoolean()) }, ::actorNextStep)
+
+        val akkaPrintSystem = PrintSystem(bigN * bigM)
+        akkaEngine.addNewSystem(akkaPrintSystem)
+
+        val coroutinesPrintSystem = PrintSystem(bigN * bigM)
+        akkaEngine.addNewSystem(coroutinesPrintSystem)
+
+        for (i in 0..iterations) {
+            runBlocking {
+                akkaEngine.iterate()
+                coroutinesEngine.iterate()
+                val akkaField = actorsToString(akkaPrintSystem.render(i + 1L).toList())
+                val coroutinesField = actorsToString(coroutinesPrintSystem.render(i + 1L).toList())
+                assertEquals(akkaField.trim(), coroutinesField.trim())
+            }
+        }
     }
 
     private fun checkEngineCorrectness(simulationEngine: Engine) {
