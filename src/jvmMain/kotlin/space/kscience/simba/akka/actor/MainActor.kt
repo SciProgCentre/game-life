@@ -13,54 +13,45 @@ class MainActor private constructor(
 ): AbstractBehavior<MainActorMessage>(context) {
     lateinit var field: List<Actor<GameOfLifeMessage>>
 
-    private val neighborsIndices = setOf(
-        Pair(-1, -1), Pair(-1, 0), Pair(-1, 1),
-        Pair(0, -1), Pair(0, 1),
-        Pair(1, -1), Pair(1, 0), Pair(1, 1)
+    private val neighborsIndices = setOf<Vector>(
+        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
+        intArrayOf(0, -1), intArrayOf(0, 1),
+        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
     )
 
     override fun createReceive(): Receive<MainActorMessage> {
         return newReceiveBuilder()
-            .onMessage(SpawnDiscreteCells::class.java) { onSpawnDiscreteCells(it) }
-            .onMessage(SpawnContinuousCells::class.java) { onSpawnContinuousCells(it) }
+            .onMessage(SpawnCells::class.java) { onSpawnCells(it) }
             .onMessage(SyncIterate::class.java, ::onSyncIterate)
             .build()
     }
 
-    private fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> onSpawnDiscreteCells(msg: SpawnDiscreteCells<C, State, Env>): MainActor {
-        val (n, m) = msg.n to msg.m
-
+    private fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> onSpawnCells(msg: SpawnCells<C, State, Env>): MainActor {
         fun cyclicMod(i: Int, n: Int): Int {
             return if (i >= 0) i % n else n + i % n
         }
 
-        fun getNeighboursIds(i: Int, j: Int): List<Pair<Int, Int>> {
-            return neighborsIndices.map { cyclicMod(i - it.first, n) to cyclicMod(j - it.second, m) }
+        fun getNeighboursIds(v: Vector): List<Vector> {
+            return neighborsIndices.map { neighbour ->
+                v.zip(msg.dimensions)
+                    .mapIndexed { index, (position, dimensionBorder) -> cyclicMod(position - neighbour[index], dimensionBorder) }
+                    .toIntArray()
+            }
         }
 
-        val tempField: List<List<C>> = List(n) { i -> List(m) { j -> msg.init(i, j) } }
-
-        field = tempField.mapIndexed { i, list ->
-            list.mapIndexed { j, state ->
-                val cellActor = CellActor<C, State, Env>(msg.engine, state, msg.nextStep)
-                cellActor.akkaCellActorRef = context.spawn(cellActor.akkaCellActor, "Actor_${i}_$j")
-                cellActor
-            }
-        }.flatten()
+        field = (0 until msg.dimensions.product()).map { index ->
+            val state = msg.init(index.toVector(msg.dimensions))
+            val cellActor = CellActor<C, State, Env>(msg.engine, state, msg.nextStep)
+            cellActor.akkaCellActorRef = context.spawn(cellActor.akkaCellActor, "Actor_${index}")
+            cellActor
+        }
 
         field.forEachIndexed { index, actorRef ->
-            val i = index / m
-            val j = index % m
-            getNeighboursIds(i, j)
-                .map { (k, l) -> field[k * n + l] }
+            getNeighboursIds(index.toVector(msg.dimensions))
+                .map { v -> field[v.toIndex(msg.dimensions)] }
                 .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
         }
 
-        return this
-    }
-
-    private fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> onSpawnContinuousCells(msg: SpawnContinuousCells<C, State, Env>): MainActor {
-        TODO("continuous not supported yet")
         return this
     }
 

@@ -16,8 +16,8 @@ import space.kscience.simba.systems.PrintSystem
 import kotlin.random.Random
 
 private fun getEngine(n: Int, m: Int, random: Random): Engine {
-    return AkkaActorEngine(n, m, { i, j -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
-//    return CoroutinesActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
+    return AkkaActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
+//    return CoroutinesActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
 }
 
 private fun Routing.setUpGameOfLife() {

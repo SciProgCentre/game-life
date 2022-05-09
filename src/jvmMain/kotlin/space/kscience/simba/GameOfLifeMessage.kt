@@ -10,10 +10,7 @@ class Iterate: GameOfLifeMessage()
 class PassState<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(val state: C, val timestamp: Long): GameOfLifeMessage()
 
 sealed class MainActorMessage: Message
-class SpawnDiscreteCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    val n: Int, val m: Int, val engine: Engine, val init: (Int, Int) -> C, val nextStep: (State, Env) -> State
-): MainActorMessage()
-class SpawnContinuousCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    val engine: Engine, val init: () -> C, val nextStep: (State, Env) -> State
+class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+    val dimensions: Vector, val engine: Engine, val init: (Vector) -> C, val nextStep: (State, Env) -> State
 ): MainActorMessage()
 class SyncIterate: MainActorMessage()

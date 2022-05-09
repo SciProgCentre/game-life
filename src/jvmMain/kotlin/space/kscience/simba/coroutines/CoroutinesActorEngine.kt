@@ -9,16 +9,16 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    private val n: Int, private val m: Int,
-    private val init: (Int, Int) -> C,
+    private val dimensions: Vector,
+    private val init: (Vector) -> C,
     private val nextStep: (State, Env) -> State
 ): Engine, CoroutineScope {
     private var field: List<Actor<GameOfLifeMessage>>
 
-    private val neighborsIndices = setOf(
-        Pair(-1, -1), Pair(-1, 0), Pair(-1, 1),
-        Pair(0, -1), Pair(0, 1),
-        Pair(1, -1), Pair(1, 0), Pair(1, 1)
+    private val neighborsIndices = setOf<Vector>(
+        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
+        intArrayOf(0, -1), intArrayOf(0, 1),
+        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
     )
 
     override val coroutineContext: CoroutineContext
@@ -31,24 +31,23 @@ class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Env
             return if (i >= 0) i % n else n + i % n
         }
 
-        fun getNeighboursIds(i: Int, j: Int): List<Pair<Int, Int>> {
-            return neighborsIndices.map { cyclicMod(i - it.first, n) to cyclicMod(j - it.second, m) }
+        fun getNeighboursIds(v: Vector): List<Vector> {
+            return neighborsIndices.map { neighbour ->
+                v.zip(dimensions)
+                    .mapIndexed { index, (position, dimensionBorder) -> cyclicMod(position - neighbour[index], dimensionBorder) }
+                    .toIntArray()
+            }
         }
 
-        val tempField = List(n) { i -> List(m) { j -> init(i, j) } }
+        field = (0 until dimensions.product()).map { index ->
+            val state = init(index.toVector(dimensions))
+            CoroutinesCellActor(this, coroutineContext, state, nextStep)
+        }
 
-        field = tempField.mapIndexed { _, list ->
-            list.mapIndexed { _, state ->
-                CoroutinesCellActor(this, coroutineContext, state, nextStep)
-            }
-        }.flatten()
-
-        field.forEachIndexed { index, actor ->
-            val i = index / m
-            val j = index % m
-            getNeighboursIds(i, j)
-                .map { (k, l) -> field[k * n + l] }
-                .forEach { neighbour -> actor.handleAndCallSystems(AddNeighbour(neighbour)) }
+        field.forEachIndexed { index, actorRef ->
+            getNeighboursIds(index.toVector(dimensions))
+                .map { v -> field[v.toIndex(dimensions)] }
+                .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
         }
     }
 
