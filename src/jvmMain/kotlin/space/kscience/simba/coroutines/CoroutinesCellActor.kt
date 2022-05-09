@@ -10,19 +10,19 @@ import space.kscience.simba.engine.Engine
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
-class CoroutinesCellActor(
+class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     override val coroutineContext: CoroutineContext,
-    private var state: ActorClassicCell,
-    private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+    private var state: C,
+    private val nextStep: (State, Env) -> State
 ) : Actor<GameOfLifeMessage>, CoroutineScope {
     private val actor = actor<GameOfLifeMessage> {
         var timestamp = 0L
         var iterations = 0
         val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
-        val earlyStates = linkedMapOf<Long, MutableList<ActorClassicCell>>()
+        val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
-        var internalState = state.copy()
+        var internalState = state
 
         fun onAddNeighbourMessage(msg: AddNeighbour) {
             neighbours.add(msg.cellActor)
@@ -41,15 +41,16 @@ class CoroutinesCellActor(
             forceIteration()
         }
 
-        fun onPassStateMessage(msg: PassState) {
+        @Suppress("UNCHECKED_CAST")
+        fun onPassStateMessage(msg: PassState<*, *, *>) {
             if (msg.timestamp != timestamp) {
                 earlyStates
                     .getOrPut(msg.timestamp) { mutableListOf() }
-                    .add(msg.state)
+                    .add(msg.state as C)
                 return
             }
 
-            internalState.addNeighboursState(msg.state)
+            internalState.addNeighboursState(msg.state as C)
             if (internalState.isReadyForIteration(neighbours.size)) {
                 internalState = internalState.iterate(nextStep)
 
@@ -64,7 +65,7 @@ class CoroutinesCellActor(
             when (msg) {
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState -> onPassStateMessage(msg)
+                is PassState<*, *, *> -> onPassStateMessage(msg)
             }
         }
     }

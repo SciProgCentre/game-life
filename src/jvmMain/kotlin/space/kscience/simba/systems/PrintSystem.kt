@@ -1,7 +1,6 @@
 package space.kscience.simba.systems
 
-import space.kscience.simba.ActorClassicCell
-import space.kscience.simba.PassState
+import space.kscience.simba.*
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import java.util.concurrent.ConcurrentHashMap
@@ -10,15 +9,16 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class PrintSystem(private val fieldSize: Int) : EngineSystem {
-    private val statesByTimestamp = ConcurrentHashMap<Long, ConcurrentSkipListSet<ActorClassicCell>>()
-    private val continuations = mutableListOf<Pair<Long, Continuation<Set<ActorClassicCell>>>>()
+class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(private val fieldSize: Int) : EngineSystem {
+    private val statesByTimestamp = ConcurrentHashMap<Long, ConcurrentSkipListSet<C>>()
+    private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
 
+    @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
-        if (msg is PassState) {
+        if (msg is PassState<*, *, *>) {
             statesByTimestamp
                 .getOrPut(msg.timestamp) { ConcurrentSkipListSet() }
-                .add(msg.state)
+                .add(msg.state as C)
 
             if (statesByTimestamp[msg.timestamp]?.size == fieldSize) {
                 renderAvailable(msg.timestamp)
@@ -35,10 +35,10 @@ class PrintSystem(private val fieldSize: Int) : EngineSystem {
         continuations.removeIf { it.first == iteration }
     }
 
-    suspend fun render(iteration: Long): Set<ActorClassicCell> {
+    suspend fun render(iteration: Long): Set<C> {
         val states = statesByTimestamp[iteration]
         return if (states == null || states.size != fieldSize) {
-            suspendCoroutine<Set<ActorClassicCell>> {
+            suspendCoroutine<Set<C>> {
                 continuations += iteration to it
             }
         } else {

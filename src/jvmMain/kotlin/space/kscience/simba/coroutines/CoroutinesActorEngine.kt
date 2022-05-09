@@ -8,10 +8,10 @@ import space.kscience.simba.engine.EngineSystem
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-class CoroutinesActorEngine(
+class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     private val n: Int, private val m: Int,
-    private val init: (Int, Int) -> ActorCellState,
-    private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+    private val init: (Int, Int) -> C,
+    private val nextStep: (State, Env) -> State
 ): Engine, CoroutineScope {
     private var field: List<Actor<GameOfLifeMessage>>
 
@@ -35,7 +35,7 @@ class CoroutinesActorEngine(
             return neighborsIndices.map { cyclicMod(i - it.first, n) to cyclicMod(j - it.second, m) }
         }
 
-        val tempField = List(n) { i -> List(m) { j -> ActorClassicCell(i, j, init(i, j)) } }
+        val tempField = List(n) { i -> List(m) { j -> init(i, j) } }
 
         field = tempField.mapIndexed { _, list ->
             list.mapIndexed { _, state ->

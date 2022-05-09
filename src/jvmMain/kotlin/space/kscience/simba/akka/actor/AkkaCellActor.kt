@@ -10,10 +10,10 @@ import space.kscience.simba.*
 import space.kscience.simba.engine.Actor
 import space.kscience.simba.engine.Engine
 
-class CellActor(
+class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
-    private val state: ActorClassicCell,
-    nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+    private val state: C,
+    nextStep: (State, Env) -> State
 ) : Actor<GameOfLifeMessage> {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)
     lateinit var akkaCellActorRef: ActorRef<GameOfLifeMessage>
@@ -27,15 +27,15 @@ class CellActor(
     }
 }
 
-class AkkaCellActor private constructor(
+class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> private constructor(
     context: ActorContext<GameOfLifeMessage>,
-    private var state: ActorClassicCell,
-    private val nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+    private var state: C,
+    private val nextStep: (State, Env) -> State
 ): AbstractBehavior<GameOfLifeMessage>(context) {
     private var timestamp = 0L
     private var iterations = 0
     private val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
-    private val earlyStates = linkedMapOf<Long, MutableList<ActorClassicCell>>()
+    private val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
     override fun createReceive(): Receive<GameOfLifeMessage> {
         return newReceiveBuilder()
@@ -64,15 +64,16 @@ class AkkaCellActor private constructor(
         return this
     }
 
-    private fun onPassStateMessage(msg: PassState): Behavior<GameOfLifeMessage> {
+    @Suppress("UNCHECKED_CAST")
+    private fun onPassStateMessage(msg: PassState<*, *, *>): Behavior<GameOfLifeMessage> {
         if (msg.timestamp != timestamp) {
             earlyStates
                 .getOrPut(msg.timestamp) { mutableListOf() }
-                .add(msg.state)
+                .add(msg.state as C)
             return this
         }
 
-        state.addNeighboursState(msg.state)
+        state.addNeighboursState(msg.state as C)
         if (state.isReadyForIteration(neighbours.size)) {
             state = state.iterate(nextStep)
 
@@ -85,9 +86,8 @@ class AkkaCellActor private constructor(
     }
 
     companion object {
-        fun create(
-            state: ActorClassicCell,
-            nextStep: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState
+        fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> create(
+            state: C, nextStep: (State, Env) -> State
         ): Behavior<GameOfLifeMessage> {
             return Behaviors.setup { AkkaCellActor(it, state, nextStep) }
         }
