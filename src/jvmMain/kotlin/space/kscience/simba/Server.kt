@@ -20,7 +20,7 @@ private fun getEngine(n: Int, m: Int, random: Random): Engine {
 //    return CoroutinesActorEngine(n, m, { _, _ -> ActorCellState(random.nextBoolean()) }, ::actorNextStep)
 }
 
-fun main() {
+private fun Routing.setUpGameOfLife() {
     val random = Random(0)
     val (n, m) = 10 to 10
 
@@ -29,6 +29,14 @@ fun main() {
     simulationEngine.addNewSystem(printSystem)
     simulationEngine.iterate()
 
+    get("/status/gameOfLife/{iteration}") {
+        simulationEngine.iterate()
+        val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
+        call.respond(printSystem.render(iteration))
+    }
+}
+
+fun main() {
     embeddedServer(Netty, 9090) {
         install(ContentNegotiation) {
             json()
@@ -53,11 +61,7 @@ fun main() {
                 resources("")
             }
 
-            get("/status/{iteration}") {
-                simulationEngine.iterate()
-                val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
-                call.respond(printSystem.render(iteration))
-            }
+            setUpGameOfLife()
         }
     }.start(wait = true)
 }
