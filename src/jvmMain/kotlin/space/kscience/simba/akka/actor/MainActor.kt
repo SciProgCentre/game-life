@@ -13,13 +13,6 @@ class MainActor private constructor(
 ): AbstractBehavior<MainActorMessage>(context) {
     lateinit var field: List<Actor<GameOfLifeMessage>>
 
-    private val neighborsIndices = setOf<Vector>(
-        intArrayOf(1)
-//        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
-//        intArrayOf(0, -1), intArrayOf(0, 1),
-//        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
-    )
-
     override fun createReceive(): Receive<MainActorMessage> {
         return newReceiveBuilder()
             .onMessage(SpawnCells::class.java) { onSpawnCells(it) }
@@ -33,7 +26,7 @@ class MainActor private constructor(
         }
 
         fun getNeighboursIds(v: Vector): List<Vector> {
-            return neighborsIndices.map { neighbour ->
+            return msg.neighborsIndices.map { neighbour ->
                 v.zip(msg.dimensions)
                     .mapIndexed { index, (position, dimensionBorder) -> cyclicMod(position - neighbour[index], dimensionBorder) }
                     .toIntArray()

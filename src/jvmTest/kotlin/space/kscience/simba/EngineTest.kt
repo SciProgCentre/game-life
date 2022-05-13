@@ -16,27 +16,32 @@ class EngineTest {
     private val bigN = 100
     private val bigM = 100
 
+    private fun fillSquare(vector: Vector): ActorClassicCell {
+        val (i, j) = vector
+        return classicCell(i, j, i in 2..4 && j in 2..4)
+    }
+
     @Test
     fun testAkkaGameOfLife() {
-        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, i in 2..4 && j in 2..4) }, ::actorNextStep)
+        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
         checkEngineCorrectness(simulationEngine)
     }
 
     @Test
     fun testAkkaGameOfLifeAfterIterations() {
-        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, i in 2..4 && j in 2..4) }, ::actorNextStep)
+        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
         checkEngineCorrectnessAfterIterations(simulationEngine)
     }
 
     @Test
     fun testKotlinActorsGameOfLife() {
-        val simulationEngine = CoroutinesActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, i in 2..4 && j in 2..4) }, ::actorNextStep)
+        val simulationEngine = CoroutinesActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
         checkEngineCorrectness(simulationEngine)
     }
 
     @Test
     fun testKotlinActorsGameOfLifeAfterIterations() {
-        val simulationEngine = CoroutinesActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, i in 2..4 && j in 2..4) }, ::actorNextStep)
+        val simulationEngine = CoroutinesActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
         checkEngineCorrectnessAfterIterations(simulationEngine)
     }
 
@@ -46,8 +51,18 @@ class EngineTest {
         val random2 = Random(0)
         val iterations = 10
 
-        val akkaEngine = AkkaActorEngine(intArrayOf(bigN, bigM), { (i, j) -> classicCell(i, j, random1.nextBoolean()) }, ::actorNextStep)
-        val coroutinesEngine = CoroutinesActorEngine(intArrayOf(bigN, bigM), { (i, j) -> classicCell(i, j, random2.nextBoolean()) }, ::actorNextStep)
+        val akkaEngine = AkkaActorEngine(
+            intArrayOf(bigN, bigM),
+            gameOfLifeNeighbours,
+            { (i, j) -> classicCell(i, j, random1.nextBoolean()) },
+            ::actorNextStep
+        )
+        val coroutinesEngine = CoroutinesActorEngine(
+            intArrayOf(bigN, bigM),
+            gameOfLifeNeighbours,
+            { (i, j) -> classicCell(i, j, random2.nextBoolean()) },
+            ::actorNextStep
+        )
 
         val akkaPrintSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(bigN * bigM)
         akkaEngine.addNewSystem(akkaPrintSystem)

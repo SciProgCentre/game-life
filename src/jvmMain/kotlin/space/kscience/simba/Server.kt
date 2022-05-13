@@ -15,7 +15,7 @@ import space.kscience.simba.systems.PrintSystem
 import kotlin.random.Random
 
 private fun getEngine(n: Int, m: Int, random: Random): Engine {
-    return AkkaActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
+    return AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
 //    return CoroutinesActorEngine(intArrayOf(n, m), { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep)
 }
 
@@ -52,7 +52,9 @@ private fun Routing.setUpBoids() {
         return ActorBoidsState(this.randomVector() * bound, this.randomVector())
     }
 
-    val simulationEngine = AkkaActorEngine(intArrayOf(n), { ActorBoidsCell(it[0], random.randomBoidsState()) }) { old, env ->
+    val neighbours = (1 until n).map { intArrayOf(it) }.toSet()
+
+    val simulationEngine = AkkaActorEngine(intArrayOf(n), neighbours, { ActorBoidsCell(it[0], random.randomBoidsState()) }) { old, env ->
         // TODO
         return@AkkaActorEngine ActorBoidsState((old.position + old.velocity).rollover(0.0, bound), old.velocity)
     }

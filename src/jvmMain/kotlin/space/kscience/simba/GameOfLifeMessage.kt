@@ -11,6 +11,6 @@ class PassState<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentStat
 
 sealed class MainActorMessage: Message
 class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    val dimensions: Vector, val engine: Engine, val init: (Vector) -> C, val nextStep: (State, Env) -> State
+    val dimensions: Vector, val engine: Engine, val neighborsIndices: Set<Vector>, val init: (Vector) -> C, val nextStep: (State, Env) -> State
 ): MainActorMessage()
 class SyncIterate: MainActorMessage()

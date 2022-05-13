@@ -7,6 +7,7 @@ import space.kscience.simba.engine.EngineSystem
 
 class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     dimensions: Vector,
+    neighborsIndices: Set<Vector>,
     init: (Vector) -> C,
     nextStep: (State, Env) -> State
 ) : Engine {
@@ -14,7 +15,7 @@ class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Environme
     override val systems: MutableList<EngineSystem> = mutableListOf()
 
     init {
-        actorSystem.tell(SpawnCells(dimensions, this, init, nextStep))
+        actorSystem.tell(SpawnCells(dimensions, this, neighborsIndices, init, nextStep))
     }
 
     override fun iterate() {

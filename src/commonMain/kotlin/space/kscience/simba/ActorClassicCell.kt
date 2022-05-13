@@ -1,5 +1,11 @@
 package space.kscience.simba
 
+val gameOfLifeNeighbours = setOf<Vector>(
+    intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
+    intArrayOf(0, -1), intArrayOf(0, 1),
+    intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
+)
+
 @kotlinx.serialization.Serializable
 data class ActorCellState(val isAlive: Boolean): ObjectState
 

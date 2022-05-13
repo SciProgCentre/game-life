@@ -10,16 +10,11 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     private val dimensions: Vector,
+    private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
     private val nextStep: (State, Env) -> State
 ): Engine, CoroutineScope {
     private var field: List<Actor<GameOfLifeMessage>>
-
-    private val neighborsIndices = setOf<Vector>(
-        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
-        intArrayOf(0, -1), intArrayOf(0, 1),
-        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
-    )
 
     override val coroutineContext: CoroutineContext
         get() = EmptyCoroutineContext
