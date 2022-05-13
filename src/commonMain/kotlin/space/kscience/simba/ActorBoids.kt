@@ -1,26 +1,45 @@
 package space.kscience.simba
 
-typealias Vector2 = Pair<Double, Double>
-
 @kotlinx.serialization.Serializable
-data class ActorBoidsState(val direction: Vector2, val velocity: Vector2) : ObjectState
+data class ActorBoidsState(val position: Vector2, val velocity: Vector2) : ObjectState
 
-data class ActorBoidsEnvironmentState(val field: MutableList<ActorBoidsState>) : EnvironmentState {}
+data class ActorBoidsEnvironmentState(val field: MutableList<ActorBoidsCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
 data class ActorBoidsCell(
-    private val state: ActorBoidsState
+    val id: Int, val state: ActorBoidsState
 ): Cell<ActorBoidsCell, ActorBoidsState, ActorBoidsEnvironmentState>() {
+    @kotlinx.serialization.Transient
+    private val environmentState = ActorBoidsEnvironmentState(mutableListOf())
+
     override fun isReadyForIteration(expectedCount: Int): Boolean {
-        TODO("Not yet implemented")
+        return environmentState.field.size == expectedCount
     }
 
     override fun addNeighboursState(cell: ActorBoidsCell) {
-        TODO("Not yet implemented")
+        environmentState.field.add(cell)
     }
 
     override fun iterate(convert: (ActorBoidsState, ActorBoidsEnvironmentState) -> ActorBoidsState): ActorBoidsCell {
-        TODO("Not yet implemented")
+        return ActorBoidsCell(id, convert(state, environmentState))
     }
 
+    override fun compareTo(other: ActorBoidsCell): Int {
+        return id.compareTo(other.id)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || this::class != other::class) return false
+
+        other as ActorBoidsCell
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id
+    }
 }

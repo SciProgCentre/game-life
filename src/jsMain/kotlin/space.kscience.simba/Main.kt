@@ -10,8 +10,9 @@ import org.w3c.dom.HTMLElement
 
 private val scope = MainScope()
 
-private fun getGame(): GameOfLife {
-    return GameOfLife(10, 10, 5)
+private fun getGame(): GameSystem {
+//    return GameOfLife(10, 10, 5)
+    return Boids(100, 100)
 }
 
 fun main() {
@@ -20,17 +21,18 @@ fun main() {
     game.initializeCanvas(document.getElementById("gamefield") as HTMLCanvasElement)
 
     var iteration = 1L
-    window.onload = {
-        scope.launch { game.render(iteration) }
+    fun animate(game: GameSystem) {
+        scope.launch {
+            game.render(++iteration)
+            window.requestAnimationFrame { animate(game) }
+        }
     }
+
+    window.onload = { scope.launch { game.render(iteration) } }
 
     val startButton = document.getElementById("start") as HTMLButtonElement
-    startButton.onclick = {
-        window.setInterval({ scope.launch { game.render(++iteration) } }, 300)
-    }
+    startButton.onclick = { animate(game) }
 
     val nextButton = document.getElementById("next") as HTMLButtonElement
-    nextButton.onclick = {
-        scope.launch { game.render(++iteration) }
-    }
+    nextButton.onclick = { scope.launch { game.render(++iteration) } }
 }

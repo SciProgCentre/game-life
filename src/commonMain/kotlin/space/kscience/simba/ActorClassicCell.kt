@@ -8,7 +8,7 @@ data class ActorCellEnvironmentState(val neighbours: MutableList<ActorClassicCel
 @kotlinx.serialization.Serializable
 data class ActorClassicCell(
     val i: Int, val j: Int, private val state: ActorCellState
-): Cell<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(), Comparable<ActorClassicCell> {
+): Cell<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>() {
     @kotlinx.serialization.Transient
     private val environmentState = ActorCellEnvironmentState(mutableListOf())
 
@@ -16,12 +16,12 @@ data class ActorClassicCell(
         return environmentState.neighbours.size == expectedCount
     }
 
-    override fun iterate(convert: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState): ActorClassicCell {
-        return ActorClassicCell(i, j, convert(state, environmentState))
-    }
-
     override fun addNeighboursState(cell: ActorClassicCell) {
         environmentState.neighbours.add(cell)
+    }
+
+    override fun iterate(convert: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState): ActorClassicCell {
+        return ActorClassicCell(i, j, convert(state, environmentState))
     }
 
     fun isAlive(): Boolean {

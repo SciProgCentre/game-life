@@ -14,9 +14,10 @@ class MainActor private constructor(
     lateinit var field: List<Actor<GameOfLifeMessage>>
 
     private val neighborsIndices = setOf<Vector>(
-        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
-        intArrayOf(0, -1), intArrayOf(0, 1),
-        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
+        intArrayOf(1)
+//        intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
+//        intArrayOf(0, -1), intArrayOf(0, 1),
+//        intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
     )
 
     override fun createReceive(): Receive<MainActorMessage> {
