@@ -1,9 +1,9 @@
 package space.kscience.simba
 
 @kotlinx.serialization.Serializable
-data class ActorBoidsState(val position: Vector2, val velocity: Vector2) : ObjectState
+data class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2) : ObjectState
 
-data class ActorBoidsEnvironmentState(val field: MutableList<ActorBoidsCell>) : EnvironmentState {}
+data class ActorBoidsEnvironmentState(val field: MutableList<ActorBoidsCell>) : EnvironmentState
 
 @kotlinx.serialization.Serializable
 data class ActorBoidsCell(

@@ -35,6 +35,11 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
         continuations.removeIf { it.first == iteration }
     }
 
+    fun isCompleteFor(iteration: Long): Boolean {
+        val states = statesByTimestamp[iteration]
+        return !(states == null || states.size != fieldSize)
+    }
+
     suspend fun render(iteration: Long): Set<C> {
         val states = statesByTimestamp[iteration]
         return if (states == null || states.size != fieldSize) {

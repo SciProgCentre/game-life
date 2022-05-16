@@ -76,7 +76,7 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
         // important to fetch data first and only then clear canvas
         val field = getBoidsData(iteration)
         clear()
-        field.map { TriangleSprite(it.state.position, it.state.velocity) }.forEach { sprite ->
+        field.map { TriangleSprite(it.state.position, it.state.direction) }.forEach { sprite ->
             sprite.draw(context)
         }
     }

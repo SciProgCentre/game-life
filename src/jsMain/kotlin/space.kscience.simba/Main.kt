@@ -12,7 +12,7 @@ private val scope = MainScope()
 
 private fun getGame(): GameSystem {
 //    return GameOfLife(10, 10, 5)
-    return Boids(100, 100)
+    return Boids(1000, 1000)
 }
 
 fun main() {

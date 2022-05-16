@@ -35,28 +35,86 @@ private fun Routing.setUpGameOfLife() {
     }
 }
 
+private object BoidsSettings {
+    const val minSpeed = 100.0
+    const val maxSpeed = 300.0
+
+    const val perceptionRadius = 200.0
+    const val avoidanceRadius = 100.0
+    const val maxSteerForce = 300.0 // how fast boid can turn
+
+    const val avoidanceWeight = 1.0
+    const val alignWeight = 1.0
+    const val cohesionWeight = 1.0
+}
+
 private fun Routing.setUpBoids() {
     val random = Random(0)
-    val n = 5
-    val bound = 100.0
+    val n = 100
+    val bound = 1000.0
 
-    fun Double.rollover(min: Double, max: Double): Double {
-        if (this > max) return min
-        if (this < min) return max
-        return this
-    }
-
-    fun Vector2.rollover(min: Double, max: Double): Vector2 = Vector2(first.rollover(min, max), second.rollover(min, max))
+    fun Vector2.clampAndSwap(min: Double, max: Double): Vector2 = Vector2(first.clampAndSwap(min, max), second.clampAndSwap(min, max))
 
     fun Random.randomBoidsState(): ActorBoidsState {
-        return ActorBoidsState(this.randomVector() * bound, this.randomVector())
+        val position = this.randomVector() * bound
+        val direction = random.randomVector()
+        val velocity = direction * (BoidsSettings.minSpeed + BoidsSettings.maxSpeed) / 2.0
+        return ActorBoidsState(position, direction, velocity)
+    }
+
+    fun Vector2.steerTowards(velocity: Vector2): Vector2 {
+        val v = this.normalized() * BoidsSettings.maxSpeed - velocity
+        return v.clampMagnitude(BoidsSettings.maxSteerForce)
     }
 
     val neighbours = (1 until n).map { intArrayOf(it) }.toSet()
 
+    // original document http://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/
+    // C# implementation https://github.com/SebLague/Boids
     val simulationEngine = AkkaActorEngine(intArrayOf(n), neighbours, { ActorBoidsCell(it[0], random.randomBoidsState()) }) { old, env ->
-        // TODO
-        return@AkkaActorEngine ActorBoidsState((old.position + old.velocity).rollover(0.0, bound), old.velocity)
+        val deltaTime = 1.0 / 60
+        val visibleNeighbours = env.field.filter { (it.state.position - old.position).length() <= BoidsSettings.perceptionRadius }
+        val avoidNeighbours = env.field.filter { (it.state.position - old.position).length() <= BoidsSettings.avoidanceRadius }
+
+        fun applyFirstRule(boid: ActorBoidsState): Vector2 {
+            val avgAvoidanceHeading = avoidNeighbours
+                .map { it.state.position }
+                .fold(zero) { acc, otherPosition ->
+                    val distance = otherPosition - boid.position
+                    acc - distance / distance.sqrLength()
+                }
+            // separationForce
+            return avgAvoidanceHeading.steerTowards(boid.velocity) * BoidsSettings.avoidanceWeight
+        }
+
+        fun applySecondRule(boid: ActorBoidsState): Vector2 {
+            val avgFlockHeading = visibleNeighbours.fold(zero) { acc, other -> acc + other.state.direction }
+            // alignmentForce
+            return avgFlockHeading.steerTowards(boid.velocity) * BoidsSettings.alignWeight
+        }
+
+        fun applyThirdRule(boid: ActorBoidsState): Vector2 {
+            val avgFlockPosition = visibleNeighbours.fold(zero) { acc, other -> acc + other.state.position }
+            val centreOfFlockmates = avgFlockPosition / visibleNeighbours.size.toDouble()
+            val offsetToFlockmatesCentre = (centreOfFlockmates - boid.position)
+            // cohesionForce
+            return offsetToFlockmatesCentre.steerTowards(boid.velocity) * BoidsSettings.cohesionWeight
+        }
+
+        var acceleration = zero
+        if (visibleNeighbours.isNotEmpty()) {
+            acceleration += applyFirstRule(old)
+            acceleration += applySecondRule(old)
+            acceleration += applyThirdRule(old)
+        }
+
+        var newVelocity = old.velocity + acceleration * deltaTime
+        val newDirection = newVelocity.normalized()
+        val speed = newVelocity.length().clamp(BoidsSettings.minSpeed, BoidsSettings.maxSpeed)
+        newVelocity = newDirection * speed
+
+        val newPosition = old.position + newVelocity * deltaTime
+        return@AkkaActorEngine ActorBoidsState(newPosition.clampAndSwap(0.0, bound), newDirection, newVelocity)
     }
 
     val printSystem = PrintSystem<ActorBoidsCell, ActorBoidsState, ActorBoidsEnvironmentState>(n)
@@ -64,8 +122,8 @@ private fun Routing.setUpBoids() {
     simulationEngine.iterate()
 
     get("/status/boids/{iteration}") {
-        simulationEngine.iterate()
         val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
+        if (!printSystem.isCompleteFor(iteration)) simulationEngine.iterate()
         call.respond(printSystem.render(iteration))
     }
 }
