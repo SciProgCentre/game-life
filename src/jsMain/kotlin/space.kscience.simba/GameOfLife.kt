@@ -13,6 +13,7 @@ import kotlinx.html.button
 import kotlinx.html.dom.append
 import kotlinx.html.id
 import org.w3c.dom.CanvasRenderingContext2D
+import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
 
@@ -36,6 +37,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
                 id = "start"
                 +"Start"
             }.onclick = {
+                (document.getElementById("next") as HTMLButtonElement).disabled = true
                 window.setInterval({ scope.launch { render(++iteration) } }, 500)
             }
 

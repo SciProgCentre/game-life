@@ -12,6 +12,7 @@ import kotlinx.dom.clear
 import kotlinx.html.*
 import kotlinx.html.dom.append
 import org.w3c.dom.CanvasRenderingContext2D
+import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
 
@@ -64,7 +65,10 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
             button {
                 id = "start"
                 +"Start"
-            }.onclick = { animate() }
+            }.onclick = {
+                (document.getElementById("next") as HTMLButtonElement).disabled = true
+                animate()
+            }
 
             button {
                 id = "next"
