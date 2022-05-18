@@ -6,6 +6,8 @@ import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.dom.clear
 import kotlinx.html.button
 import kotlinx.html.dom.append
@@ -21,21 +23,26 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
+    private var iteration = 1L
+
     private suspend fun getLifeData(iteration: Long): List<ActorClassicCell> {
         return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
     }
 
-    override fun initializeControls(panel: HTMLElement) {
+    override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
         panel.clear()
+        panel.append.apply {
+            button {
+                id = "start"
+                +"Start"
+            }.onclick = {
+                window.setInterval({ scope.launch { render(++iteration) } }, 500)
+            }
 
-        panel.append.button {
-            id = "start"
-            +"Start"
-        }
-
-        panel.append.button {
-            id = "next"
-            +"Next"
+            button {
+                id = "next"
+                +"Next"
+            }.onclick = { scope.launch { render(++iteration) } }
         }
     }
 

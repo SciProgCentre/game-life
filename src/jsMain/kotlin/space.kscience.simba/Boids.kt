@@ -6,10 +6,11 @@ import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.dom.clear
-import kotlinx.html.button
+import kotlinx.html.*
 import kotlinx.html.dom.append
-import kotlinx.html.id
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
@@ -43,21 +44,44 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
+    private var iteration = 1L
+    private var withAllRules = false
+
     private suspend fun getBoidsData(iteration: Long): List<ActorBoidsCell> {
         return jsonClient.get("$endpoint/status/boids/$iteration")
     }
 
-    override fun initializeControls(panel: HTMLElement) {
+    override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
         panel.clear()
+        panel.append.apply {
+            fun animate() {
+                scope.launch {
+                    render(++iteration)
+                    window.requestAnimationFrame { animate() }
+                }
+            }
 
-        panel.append.button {
-            id = "start"
-            +"Start"
-        }
+            button {
+                id = "start"
+                +"Start"
+            }.onclick = { animate() }
 
-        panel.append.button {
-            id = "next"
-            +"Next"
+            button {
+                id = "next"
+                +"Next"
+            }.onclick = { scope.launch { render(++iteration) } }
+
+            input(type = InputType.checkBox) { id = "withAllRules" }.onclick = {
+                scope.launch {
+                    withAllRules = !withAllRules
+                    jsonClient.put("$endpoint/boids?withAllRules=$withAllRules")
+                }
+            }
+
+            label {
+                attributes += "for" to "withAllRules"
+                +"Enable boids rules"
+            }
         }
     }
 

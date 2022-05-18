@@ -68,6 +68,7 @@ private fun Routing.setUpBoids() {
     }
 
     val neighbours = (1 until n).map { intArrayOf(it) }.toSet()
+    var withAllRules = false
 
     // original document http://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/
     // C# implementation https://github.com/SebLague/Boids
@@ -102,7 +103,7 @@ private fun Routing.setUpBoids() {
         }
 
         var acceleration = zero
-        if (visibleNeighbours.isNotEmpty()) {
+        if (visibleNeighbours.isNotEmpty() && withAllRules) {
             acceleration += applyFirstRule(old)
             acceleration += applySecondRule(old)
             acceleration += applyThirdRule(old)
@@ -125,6 +126,10 @@ private fun Routing.setUpBoids() {
         val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
         if (!printSystem.isCompleteFor(iteration)) simulationEngine.iterate()
         call.respond(printSystem.render(iteration))
+    }
+
+    put("/boids") {
+        withAllRules = call.request.queryParameters["withAllRules"] == "true"
     }
 }
 
