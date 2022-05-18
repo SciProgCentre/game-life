@@ -62,8 +62,8 @@ private fun Routing.setUpBoids() {
         return ActorBoidsState(position, direction, velocity)
     }
 
-    fun Vector2.steerTowards(velocity: Vector2): Vector2 {
-        val v = this.normalized() * BoidsSettings.maxSpeed - velocity
+    fun steer(from: Vector2, towards: Vector2): Vector2 {
+        val v = towards.normalized() * BoidsSettings.maxSpeed - from
         return v.clampMagnitude(BoidsSettings.maxSteerForce)
     }
 
@@ -85,13 +85,13 @@ private fun Routing.setUpBoids() {
                     acc - distance / distance.sqrLength()
                 }
             // separationForce
-            return avgAvoidanceHeading.steerTowards(boid.velocity) * BoidsSettings.avoidanceWeight
+            return steer(boid.velocity, avgAvoidanceHeading) * BoidsSettings.avoidanceWeight
         }
 
         fun applySecondRule(boid: ActorBoidsState): Vector2 {
             val avgFlockHeading = visibleNeighbours.fold(zero) { acc, other -> acc + other.state.direction }
             // alignmentForce
-            return avgFlockHeading.steerTowards(boid.velocity) * BoidsSettings.alignWeight
+            return steer(boid.velocity, avgFlockHeading) * BoidsSettings.alignWeight
         }
 
         fun applyThirdRule(boid: ActorBoidsState): Vector2 {
@@ -99,7 +99,7 @@ private fun Routing.setUpBoids() {
             val centreOfFlockmates = avgFlockPosition / visibleNeighbours.size.toDouble()
             val offsetToFlockmatesCentre = (centreOfFlockmates - boid.position)
             // cohesionForce
-            return offsetToFlockmatesCentre.steerTowards(boid.velocity) * BoidsSettings.cohesionWeight
+            return steer(boid.velocity, offsetToFlockmatesCentre) * BoidsSettings.cohesionWeight
         }
 
         var acceleration = zero
