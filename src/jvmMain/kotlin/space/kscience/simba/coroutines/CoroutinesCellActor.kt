@@ -5,8 +5,7 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.launch
 import space.kscience.simba.*
-import space.kscience.simba.engine.Actor
-import space.kscience.simba.engine.Engine
+import space.kscience.simba.engine.*
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
@@ -15,11 +14,11 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
     override val coroutineContext: CoroutineContext,
     private var state: C,
     private val nextStep: (State, Env) -> State
-) : Actor<GameOfLifeMessage>, CoroutineScope {
-    private val actor = actor<GameOfLifeMessage> {
+) : Actor<Message>, CoroutineScope {
+    private val actor = actor<Message> {
         var timestamp = 0L
         var iterations = 0
-        val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
+        val neighbours = mutableListOf<Actor<Message>>()
         val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
         var internalState = state
@@ -70,7 +69,7 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
         }
     }
 
-    override fun handle(msg: GameOfLifeMessage) {
+    override fun handle(msg: Message) {
         launch { actor.send(msg) }
     }
 }

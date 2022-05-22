@@ -7,18 +7,17 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import space.kscience.simba.*
-import space.kscience.simba.engine.Actor
-import space.kscience.simba.engine.Engine
+import space.kscience.simba.engine.*
 
 class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     private val state: C,
     nextStep: (State, Env) -> State
-) : Actor<GameOfLifeMessage> {
+) : Actor<Message> {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)
-    lateinit var akkaCellActorRef: ActorRef<GameOfLifeMessage>
+    lateinit var akkaCellActorRef: ActorRef<Message>
 
-    override fun handle(msg: GameOfLifeMessage) {
+    override fun handle(msg: Message) {
         akkaCellActorRef.tell(msg)
     }
 
@@ -28,16 +27,16 @@ class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentStat
 }
 
 class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> private constructor(
-    context: ActorContext<GameOfLifeMessage>,
+    context: ActorContext<Message>,
     private var state: C,
     private val nextStep: (State, Env) -> State
-): AbstractBehavior<GameOfLifeMessage>(context) {
+): AbstractBehavior<Message>(context) {
     private var timestamp = 0L
     private var iterations = 0
-    private val neighbours = mutableListOf<Actor<GameOfLifeMessage>>()
+    private val neighbours = mutableListOf<Actor<Message>>()
     private val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
-    override fun createReceive(): Receive<GameOfLifeMessage> {
+    override fun createReceive(): Receive<Message> {
         return newReceiveBuilder()
             .onMessage(AddNeighbour::class.java, ::onAddNeighbourMessage)
             .onMessage(Iterate::class.java, ::onIterateMessage)
@@ -45,17 +44,17 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
             .build()
     }
 
-    private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<GameOfLifeMessage> {
+    private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<Message> {
         neighbours.add(msg.cellActor)
         return this
     }
 
-    private fun onIterateMessage(msg: Iterate): Behavior<GameOfLifeMessage> {
+    private fun onIterateMessage(msg: Iterate): Behavior<Message> {
         if (iterations++ != 0) return this
         return forceIteration()
     }
 
-    private fun forceIteration(): Behavior<GameOfLifeMessage> {
+    private fun forceIteration(): Behavior<Message> {
         timestamp++
         neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
         earlyStates.remove(timestamp)?.forEach {
@@ -65,7 +64,7 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun onPassStateMessage(msg: PassState<*, *, *>): Behavior<GameOfLifeMessage> {
+    private fun onPassStateMessage(msg: PassState<*, *, *>): Behavior<Message> {
         if (msg.timestamp != timestamp) {
             earlyStates
                 .getOrPut(msg.timestamp) { mutableListOf() }
@@ -88,7 +87,7 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
     companion object {
         fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> create(
             state: C, nextStep: (State, Env) -> State
-        ): Behavior<GameOfLifeMessage> {
+        ): Behavior<Message> {
             return Behaviors.setup { AkkaCellActor(it, state, nextStep) }
         }
     }

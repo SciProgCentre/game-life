@@ -3,6 +3,7 @@ package space.kscience.simba.systems
 import space.kscience.simba.*
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
+import space.kscience.simba.engine.PassState
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentSkipListSet
 import kotlin.coroutines.Continuation

@@ -6,12 +6,18 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import space.kscience.simba.*
-import space.kscience.simba.engine.Actor
+import space.kscience.simba.engine.*
+
+sealed class MainActorMessage
+class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+    val dimensions: Vector, val engine: Engine, val neighborsIndices: Set<Vector>, val init: (Vector) -> C, val nextStep: (State, Env) -> State
+): MainActorMessage()
+class SyncIterate: MainActorMessage()
 
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>
 ): AbstractBehavior<MainActorMessage>(context) {
-    lateinit var field: List<Actor<GameOfLifeMessage>>
+    lateinit var field: List<Actor<Message>>
 
     override fun createReceive(): Receive<MainActorMessage> {
         return newReceiveBuilder()

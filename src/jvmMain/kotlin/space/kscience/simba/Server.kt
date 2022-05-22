@@ -158,7 +158,7 @@ fun main() {
                 resources("")
             }
 
-//            setUpGameOfLife()
+            setUpGameOfLife()
             setUpBoids()
         }
     }.start(wait = true)
