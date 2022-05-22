@@ -16,7 +16,7 @@ class EngineTest {
     private val bigN = 100
     private val bigM = 100
 
-    private fun fillSquare(vector: Vector): ActorClassicCell {
+    private fun fillSquare(vector: Vector): ActorGameOfLifeCell {
         val (i, j) = vector
         return classicCell(i, j, i in 2..4 && j in 2..4)
     }
@@ -64,10 +64,10 @@ class EngineTest {
             ::actorNextStep
         )
 
-        val akkaPrintSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(bigN * bigM)
+        val akkaPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
         akkaEngine.addNewSystem(akkaPrintSystem)
 
-        val coroutinesPrintSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(bigN * bigM)
+        val coroutinesPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
         akkaEngine.addNewSystem(coroutinesPrintSystem)
 
         for (i in 0..iterations) {
@@ -82,7 +82,7 @@ class EngineTest {
     }
 
     private fun checkEngineCorrectness(simulationEngine: Engine) {
-        val printSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
         simulationEngine.addNewSystem(printSystem)
 
         runBlocking {
@@ -105,7 +105,7 @@ class EngineTest {
     }
 
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine) {
-        val printSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
         simulationEngine.addNewSystem(printSystem)
 
         simulationEngine.iterate()

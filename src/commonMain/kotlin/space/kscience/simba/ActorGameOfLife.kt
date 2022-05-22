@@ -1,40 +1,40 @@
 package space.kscience.simba
 
-val gameOfLifeNeighbours = setOf<Vector>(
+val gameOfLifeNeighbours: Set<Vector> = setOf(
     intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),
     intArrayOf(0, -1), intArrayOf(0, 1),
     intArrayOf(1, -1), intArrayOf(1, 0), intArrayOf(1, 1)
 )
 
 @kotlinx.serialization.Serializable
-data class ActorCellState(val isAlive: Boolean): ObjectState
+data class ActorGameOfLifeState(val isAlive: Boolean) : ObjectState
 
-data class ActorCellEnvironmentState(val neighbours: MutableList<ActorClassicCell>) : EnvironmentState {}
+data class ActorGameOfLifeEnv(val neighbours: MutableList<ActorGameOfLifeCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
-data class ActorClassicCell(
-    val i: Int, val j: Int, private val state: ActorCellState
-): Cell<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>() {
+data class ActorGameOfLifeCell(
+    val i: Int, val j: Int, private val state: ActorGameOfLifeState
+) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>() {
     @kotlinx.serialization.Transient
-    private val environmentState = ActorCellEnvironmentState(mutableListOf())
+    private val environmentState = ActorGameOfLifeEnv(mutableListOf())
 
     override fun isReadyForIteration(expectedCount: Int): Boolean {
         return environmentState.neighbours.size == expectedCount
     }
 
-    override fun addNeighboursState(cell: ActorClassicCell) {
+    override fun addNeighboursState(cell: ActorGameOfLifeCell) {
         environmentState.neighbours.add(cell)
     }
 
-    override fun iterate(convert: (ActorCellState, ActorCellEnvironmentState) -> ActorCellState): ActorClassicCell {
-        return ActorClassicCell(i, j, convert(state, environmentState))
+    override fun iterate(convert: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeState): ActorGameOfLifeCell {
+        return ActorGameOfLifeCell(i, j, convert(state, environmentState))
     }
 
     fun isAlive(): Boolean {
         return state.isAlive
     }
 
-    override fun compareTo(other: ActorClassicCell): Int {
+    override fun compareTo(other: ActorGameOfLifeCell): Int {
         i.compareTo(other.i).let { if (it != 0) return it }
         j.compareTo(other.j).let { if (it != 0) return it }
         return 0
@@ -44,7 +44,7 @@ data class ActorClassicCell(
         if (this === other) return true
         if (other == null || this::class != other::class) return false
 
-        other as ActorClassicCell
+        other as ActorGameOfLifeCell
 
         if (i != other.i) return false
         if (j != other.j) return false
@@ -63,22 +63,22 @@ data class ActorClassicCell(
     }
 }
 
-fun classicCell(i: Int, j: Int, state: Boolean) = ActorClassicCell(i, j, ActorCellState(state))
+fun classicCell(i: Int, j: Int, state: Boolean) = ActorGameOfLifeCell(i, j, ActorGameOfLifeState(state))
 
-fun actorNextStep(state: ActorCellState, environmentState: ActorCellEnvironmentState): ActorCellState {
+fun actorNextStep(state: ActorGameOfLifeState, environmentState: ActorGameOfLifeEnv): ActorGameOfLifeState {
     val aliveNeighbours = environmentState.neighbours.count { it.isAlive() }
     if (state.isAlive) {
         if (aliveNeighbours != 2 && aliveNeighbours != 3) {
-            return ActorCellState(false)
+            return ActorGameOfLifeState(false)
         }
     } else if (aliveNeighbours == 3) {
-        return ActorCellState(true)
+        return ActorGameOfLifeState(true)
     }
 
     return state
 }
 
-fun actorsToString(field: List<ActorClassicCell>): String {
+fun actorsToString(field: List<ActorGameOfLifeCell>): String {
     val builder = StringBuilder()
     val n = field.maxOf { it.i } + 1
     val m = field.maxOf { it.j } + 1

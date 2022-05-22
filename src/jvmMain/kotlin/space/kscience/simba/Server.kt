@@ -24,7 +24,7 @@ private fun Routing.setUpGameOfLife() {
     val (n, m) = 10 to 10
 
     val simulationEngine = getEngine(n, m, random)
-    val printSystem = PrintSystem<ActorClassicCell, ActorCellState, ActorCellEnvironmentState>(n * m)
+    val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
     simulationEngine.addNewSystem(printSystem)
     simulationEngine.iterate()
 

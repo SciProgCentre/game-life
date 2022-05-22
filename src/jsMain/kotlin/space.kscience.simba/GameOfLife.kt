@@ -26,7 +26,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
 
     private var iteration = 1L
 
-    private suspend fun getLifeData(iteration: Long): List<ActorClassicCell> {
+    private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeCell> {
         return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
     }
 
