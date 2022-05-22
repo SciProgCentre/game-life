@@ -1,8 +1,14 @@
 package space.kscience.simba.coroutines
 
 import kotlinx.coroutines.CoroutineScope
-import space.kscience.simba.*
 import space.kscience.simba.engine.*
+import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
+import space.kscience.simba.state.ObjectState
+import space.kscience.simba.utils.Vector
+import space.kscience.simba.utils.product
+import space.kscience.simba.utils.toIndex
+import space.kscience.simba.utils.toVector
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -12,7 +18,7 @@ class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Env
     private val init: (Vector) -> C,
     private val nextStep: (State, Env) -> State
 ): Engine, CoroutineScope {
-    private var field: List<Actor<Message>>
+    private var field: List<Actor>
 
     override val coroutineContext: CoroutineContext
         get() = EmptyCoroutineContext

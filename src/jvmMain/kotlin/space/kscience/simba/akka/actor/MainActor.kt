@@ -5,8 +5,14 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import space.kscience.simba.*
 import space.kscience.simba.engine.*
+import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
+import space.kscience.simba.state.ObjectState
+import space.kscience.simba.utils.Vector
+import space.kscience.simba.utils.product
+import space.kscience.simba.utils.toIndex
+import space.kscience.simba.utils.toVector
 
 sealed class MainActorMessage
 class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
@@ -17,7 +23,7 @@ class SyncIterate: MainActorMessage()
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>
 ): AbstractBehavior<MainActorMessage>(context) {
-    lateinit var field: List<Actor<Message>>
+    lateinit var field: List<Actor>
 
     override fun createReceive(): Receive<MainActorMessage> {
         return newReceiveBuilder()

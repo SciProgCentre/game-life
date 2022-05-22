@@ -5,7 +5,9 @@ import org.junit.Test
 import space.kscience.simba.akka.actor.AkkaActorEngine
 import space.kscience.simba.coroutines.CoroutinesActorEngine
 import space.kscience.simba.engine.Engine
+import space.kscience.simba.state.*
 import space.kscience.simba.systems.PrintSystem
+import space.kscience.simba.utils.Vector
 import kotlin.random.Random
 import kotlin.test.assertEquals
 

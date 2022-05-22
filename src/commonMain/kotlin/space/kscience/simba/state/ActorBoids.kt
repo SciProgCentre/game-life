@@ -1,4 +1,6 @@
-package space.kscience.simba
+package space.kscience.simba.state
+
+import space.kscience.simba.utils.Vector2
 
 @kotlinx.serialization.Serializable
 data class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2) : ObjectState

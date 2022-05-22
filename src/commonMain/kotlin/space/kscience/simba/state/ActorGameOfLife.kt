@@ -1,4 +1,6 @@
-package space.kscience.simba
+package space.kscience.simba.state
+
+import space.kscience.simba.utils.Vector
 
 val gameOfLifeNeighbours: Set<Vector> = setOf(
     intArrayOf(-1, -1), intArrayOf(-1, 0), intArrayOf(-1, 1),

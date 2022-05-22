@@ -1,4 +1,4 @@
-package space.kscience.simba
+package space.kscience.simba.utils
 
 fun Double.clamp(min: Double, max: Double): Double {
     if (this > max) return max

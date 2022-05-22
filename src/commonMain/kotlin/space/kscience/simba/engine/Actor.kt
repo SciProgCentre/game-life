@@ -1,10 +1,10 @@
 package space.kscience.simba.engine
 
-interface Actor<T: Message> {
+interface Actor {
     val engine: Engine
 
-    fun handle(msg: T)
-    fun handleAndCallSystems(msg: T) {
+    fun handle(msg: Message)
+    fun handleAndCallSystems(msg: Message) {
         engine.processWithSystems(msg)
         handle(msg)
     }

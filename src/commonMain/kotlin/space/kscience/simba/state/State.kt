@@ -1,4 +1,4 @@
-package space.kscience.simba
+package space.kscience.simba.state
 
 interface EnvironmentState
 interface ObjectState

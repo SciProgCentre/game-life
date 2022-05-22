@@ -6,23 +6,21 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import space.kscience.simba.*
 import space.kscience.simba.engine.*
+import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
+import space.kscience.simba.state.ObjectState
 
 class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     private val state: C,
     nextStep: (State, Env) -> State
-) : Actor<Message> {
+) : Actor {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)
     lateinit var akkaCellActorRef: ActorRef<Message>
 
     override fun handle(msg: Message) {
         akkaCellActorRef.tell(msg)
-    }
-
-    override fun toString(): String {
-        return state.toString()
     }
 }
 
@@ -33,7 +31,7 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
 ): AbstractBehavior<Message>(context) {
     private var timestamp = 0L
     private var iterations = 0
-    private val neighbours = mutableListOf<Actor<Message>>()
+    private val neighbours = mutableListOf<Actor>()
     private val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
     override fun createReceive(): Receive<Message> {

@@ -1,6 +1,6 @@
 package space.kscience.simba.engine
 
-interface Engine  {
+interface Engine {
     val systems: MutableList<EngineSystem>
 
     fun addNewSystem(system: EngineSystem) {

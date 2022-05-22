@@ -4,8 +4,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.launch
-import space.kscience.simba.*
 import space.kscience.simba.engine.*
+import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
+import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
@@ -14,11 +16,11 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
     override val coroutineContext: CoroutineContext,
     private var state: C,
     private val nextStep: (State, Env) -> State
-) : Actor<Message>, CoroutineScope {
+) : Actor, CoroutineScope {
     private val actor = actor<Message> {
         var timestamp = 0L
         var iterations = 0
-        val neighbours = mutableListOf<Actor<Message>>()
+        val neighbours = mutableListOf<Actor>()
         val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
         var internalState = state

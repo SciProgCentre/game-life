@@ -1,4 +1,4 @@
-package space.kscience.simba
+package space.kscience.simba.utils
 
 import kotlin.math.max
 
