@@ -18,6 +18,9 @@ data class ActorGameOfLifeCell(
     val i: Int, val j: Int, private val state: ActorGameOfLifeState
 ) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>() {
     @kotlinx.serialization.Transient
+    override val vectorId: Vector = intArrayOf(i, j)
+
+    @kotlinx.serialization.Transient
     private val environmentState = ActorGameOfLifeEnv(mutableListOf())
 
     override fun isReadyForIteration(expectedCount: Int): Boolean {
@@ -34,30 +37,6 @@ data class ActorGameOfLifeCell(
 
     fun isAlive(): Boolean {
         return state.isAlive
-    }
-
-    override fun compareTo(other: ActorGameOfLifeCell): Int {
-        i.compareTo(other.i).let { if (it != 0) return it }
-        j.compareTo(other.j).let { if (it != 0) return it }
-        return 0
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other == null || this::class != other::class) return false
-
-        other as ActorGameOfLifeCell
-
-        if (i != other.i) return false
-        if (j != other.j) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = i
-        result = 31 * result + j
-        return result
     }
 
     override fun toString(): String {

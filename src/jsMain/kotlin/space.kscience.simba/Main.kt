@@ -10,7 +10,11 @@ import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
 
 private val scope = MainScope()
-private val games = listOf(GameOfLife(100, 100, 5), Boids(1000, 1000))
+private val games = listOf(
+    GameOfLife(100, 100, 5),
+    Boids(1000, 1000),
+    Mitosis(100, 100, 5)
+)
 
 private fun GameSystem.initGame() {
     this.initializeControls(document.getElementById("controls") as HTMLElement, scope)

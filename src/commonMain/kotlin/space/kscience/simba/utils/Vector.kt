@@ -8,6 +8,13 @@ fun IntArray.product(): Int {
     return this.reduce(Int::times)
 }
 
+fun Vector.compareTo(other: Vector): Int {
+    this.zip(other).forEach { (first, second) ->
+        first.compareTo(second).let { if (it != 0) return it }
+    }
+    return 0
+}
+
 fun Int.toVector(dimensions: Vector): Vector {
     return indexFromOffset(this, stridesFromShape(dimensions), dimensions.size)
 }
