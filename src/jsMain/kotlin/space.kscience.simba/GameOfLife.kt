@@ -19,6 +19,8 @@ import org.w3c.dom.HTMLElement
 import space.kscience.simba.state.ActorGameOfLifeCell
 
 class GameOfLife(private val width: Int, private val height: Int, private val cellSize: Int): GameSystem {
+    override val name: String = "Game Of Life"
+
     private lateinit var context: CanvasRenderingContext2D
     private val endpoint = window.location.origin
     private val jsonClient = HttpClient {

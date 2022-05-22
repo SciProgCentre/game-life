@@ -4,19 +4,29 @@ import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.html.dom.append
+import kotlinx.html.js.button
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
 
 private val scope = MainScope()
+private val games = listOf(GameOfLife(100, 100, 5), Boids(1000, 1000))
 
-private fun getGame(): GameSystem {
-//    return GameOfLife(10, 10, 5)
-    return Boids(1000, 1000)
+private fun GameSystem.initGame() {
+    this.initializeControls(document.getElementById("controls") as HTMLElement, scope)
+    this.initializeCanvas(document.getElementById("gamefield") as HTMLCanvasElement)
+    scope.launch { render(1L) }
 }
 
 fun main() {
-    val game = getGame()
-    game.initializeControls(document.getElementById("controls") as HTMLElement, scope)
-    game.initializeCanvas(document.getElementById("gamefield") as HTMLCanvasElement)
-    window.onload = { scope.launch { game.render(1L) } }
+    val simulations = document.getElementById("simulations") as HTMLElement
+    simulations.append {
+        games.forEach { game ->
+            button { +game.name }.onclick = {
+                game.initGame()
+                simulations.hidden = true
+                it
+            }
+        }
+    }
 }

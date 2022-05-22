@@ -41,6 +41,8 @@ class TriangleSprite(private val position: Vector2, private val direction: Vecto
 }
 
 class Boids(private val width: Int, private val height: Int): GameSystem {
+    override val name: String = "Boids"
+
     private lateinit var context: CanvasRenderingContext2D
     private val endpoint = window.location.origin
     private val jsonClient = HttpClient {

@@ -8,8 +8,8 @@ import kotlin.random.Random
 
 class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>("gameOfLife") {
     private val random = Random(0)
-    private val n = 10
-    private val m = 10
+    private val n = 100
+    private val m = 100
 
     override val engine: Engine = getEngine(n, m, random)
 
