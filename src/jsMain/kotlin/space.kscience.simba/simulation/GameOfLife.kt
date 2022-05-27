@@ -1,4 +1,4 @@
-package space.kscience.simba
+package space.kscience.simba.simulation
 
 import io.ktor.client.*
 import io.ktor.client.features.json.*

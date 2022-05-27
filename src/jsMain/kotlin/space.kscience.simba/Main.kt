@@ -1,13 +1,16 @@
 package space.kscience.simba
 
 import kotlinx.browser.document
-import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.html.dom.append
 import kotlinx.html.js.button
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
+import space.kscience.simba.simulation.Boids
+import space.kscience.simba.simulation.GameOfLife
+import space.kscience.simba.simulation.GameSystem
+import space.kscience.simba.simulation.Mitosis
 
 private val scope = MainScope()
 private val games = listOf(

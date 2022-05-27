@@ -1,4 +1,4 @@
-package space.kscience.simba
+package space.kscience.simba.simulation
 
 import kotlinx.coroutines.CoroutineScope
 import org.w3c.dom.HTMLCanvasElement
