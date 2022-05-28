@@ -1,31 +1,46 @@
 package space.kscience.simba.systems
 
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentSkipListSet
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(private val fieldSize: Int) : EngineSystem {
-    private val statesByTimestamp = ConcurrentHashMap<Long, ConcurrentSkipListSet<C>>()
+class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(private val fieldSize: Int) : EngineSystem, CoroutineScope {
+    override val coroutineContext = Dispatchers.Unconfined
+
+    private val statesByTimestamp = mutableMapOf<Long, MutableSet<C>>()
     private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
+
+    private val flow = MutableSharedFlow<PassState<C, State, Env>>(
+        replay = fieldSize, extraBufferCapacity = fieldSize, onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    init {
+        launch {
+            flow.collect {
+                statesByTimestamp
+                    .getOrPut(it.timestamp) { mutableSetOf() }
+                    .add(it.state)
+
+                if (statesByTimestamp[it.timestamp]?.size == fieldSize) {
+                    renderAvailable(it.timestamp)
+                }
+            }
+        }
+    }
 
     @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
         if (msg is PassState<*, *, *>) {
-            statesByTimestamp
-                .getOrPut(msg.timestamp) { ConcurrentSkipListSet() }
-                .add(msg.state as C)
-
-            if (statesByTimestamp[msg.timestamp]?.size == fieldSize) {
-                renderAvailable(msg.timestamp)
-            }
+            launch { flow.emit(msg as PassState<C, State, Env>) }
         }
     }
 
@@ -33,7 +48,7 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
     private fun renderAvailable(iteration: Long) {
         continuations
             .filter { it.first == iteration }
-            .forEach { it.second.resume(statesByTimestamp[it.first]!!) }
+            .forEach { it.second.resume(statesByTimestamp[iteration]!!) }
 
         continuations.removeIf { it.first == iteration }
     }
