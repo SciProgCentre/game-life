@@ -68,9 +68,11 @@ class EngineTest {
 
         val akkaPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
         akkaEngine.addNewSystem(akkaPrintSystem)
+        akkaEngine.init()
 
         val coroutinesPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
         coroutinesEngine.addNewSystem(coroutinesPrintSystem)
+        coroutinesEngine.init()
 
         for (i in 0..iterations) {
             runBlocking {
@@ -86,6 +88,7 @@ class EngineTest {
     private fun checkEngineCorrectness(simulationEngine: Engine) {
         val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
         simulationEngine.addNewSystem(printSystem)
+        simulationEngine.init()
 
         runBlocking {
             simulationEngine.iterate()
@@ -109,6 +112,7 @@ class EngineTest {
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine) {
         val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
         simulationEngine.addNewSystem(printSystem)
+        simulationEngine.init()
 
         simulationEngine.iterate()
         simulationEngine.iterate()

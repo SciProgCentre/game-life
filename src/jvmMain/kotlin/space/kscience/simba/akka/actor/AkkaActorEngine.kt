@@ -9,15 +9,18 @@ import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 
 class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    dimensions: Vector,
-    neighborsIndices: Set<Vector>,
-    init: (Vector) -> C,
-    nextStep: (State, Env) -> State
+    private val dimensions: Vector,
+    private val neighborsIndices: Set<Vector>,
+    private val init: (Vector) -> C,
+    private val nextStep: (State, Env) -> State
 ) : Engine {
     private val actorSystem = ActorSystem.create(MainActor.create(), "gameOfLife")
+
+    override var started: Boolean = false
     override val systems: MutableList<EngineSystem> = mutableListOf()
 
-    init {
+    override fun init() {
+        started = true
         actorSystem.tell(SpawnCells(dimensions, this, neighborsIndices, init, nextStep))
     }
 

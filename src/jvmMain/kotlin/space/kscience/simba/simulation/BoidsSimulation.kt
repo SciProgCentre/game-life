@@ -35,6 +35,7 @@ class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState, ActorBoidsEnv
 
     init {
         engine.addNewSystem(printSystem)
+        engine.init()
         engine.iterate()
     }
 

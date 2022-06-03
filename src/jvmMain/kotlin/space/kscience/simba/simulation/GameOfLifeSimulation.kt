@@ -17,6 +17,7 @@ class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState
 
     init {
         engine.addNewSystem(printSystem)
+        engine.init()
         engine.iterate()
     }
 

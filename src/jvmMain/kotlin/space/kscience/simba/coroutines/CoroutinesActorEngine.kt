@@ -18,14 +18,17 @@ class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Env
     private val init: (Vector) -> C,
     private val nextStep: (State, Env) -> State
 ): Engine, CoroutineScope {
-    private var field: List<Actor>
+    private lateinit var field: List<Actor>
 
     override val coroutineContext: CoroutineContext
         get() = EmptyCoroutineContext
 
+    override var started: Boolean = false
     override val systems: MutableList<EngineSystem> = mutableListOf()
 
-    init {
+    override fun init() {
+        started = true
+
         fun cyclicMod(i: Int, n: Int): Int {
             return if (i >= 0) i % n else n + i % n
         }

@@ -26,6 +26,7 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState, ActorMi
 
     init {
         engine.addNewSystem(printSystem)
+        engine.init()
         engine.iterate()
     }
 
