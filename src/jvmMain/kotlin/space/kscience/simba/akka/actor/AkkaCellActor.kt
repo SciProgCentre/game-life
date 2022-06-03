@@ -13,7 +13,7 @@ import space.kscience.simba.state.ObjectState
 
 class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
-    private val state: C,
+    state: C,
     nextStep: (State, Env) -> State
 ) : Actor {
     val akkaCellActor = AkkaCellActor.create(state, nextStep)

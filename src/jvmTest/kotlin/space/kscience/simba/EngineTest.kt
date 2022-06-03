@@ -70,7 +70,7 @@ class EngineTest {
         akkaEngine.addNewSystem(akkaPrintSystem)
 
         val coroutinesPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
-        akkaEngine.addNewSystem(coroutinesPrintSystem)
+        coroutinesEngine.addNewSystem(coroutinesPrintSystem)
 
         for (i in 0..iterations) {
             runBlocking {

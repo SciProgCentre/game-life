@@ -63,10 +63,11 @@ fun actorsToString(field: List<ActorGameOfLifeCell>): String {
     val builder = StringBuilder()
     val n = field.maxOf { it.i } + 1
     val m = field.maxOf { it.j } + 1
+    val sortedField = field.sorted()
 
     for (i in 0 until n) {
         for (j in 0 until m) {
-            builder.append(if (field[i * n + j].isAlive()) "X" else "O")
+            builder.append(if (sortedField[i * n + j].isAlive()) "X" else "O")
         }
         builder.append("\n")
     }

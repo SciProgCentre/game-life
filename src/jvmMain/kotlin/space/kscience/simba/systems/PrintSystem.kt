@@ -1,8 +1,9 @@
 package space.kscience.simba.systems
 
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
@@ -19,19 +20,17 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
     private val statesByTimestamp = mutableMapOf<Long, MutableSet<C>>()
     private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
 
-    private val flow = MutableSharedFlow<PassState<C, State, Env>>(
-        replay = fieldSize, extraBufferCapacity = fieldSize, onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val channel = Channel<PassState<C, State, Env>>()
 
     init {
         launch {
-            flow.collect {
+            for (msg in channel) {
                 statesByTimestamp
-                    .getOrPut(it.timestamp) { mutableSetOf() }
-                    .add(it.state)
+                    .getOrPut(msg.timestamp) { mutableSetOf() }
+                    .add(msg.state)
 
-                if (statesByTimestamp[it.timestamp]?.size == fieldSize) {
-                    renderAvailable(it.timestamp)
+                if (statesByTimestamp[msg.timestamp]?.size == fieldSize) {
+                    renderAvailable(msg.timestamp)
                 }
             }
         }
@@ -40,7 +39,7 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
     @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
         if (msg is PassState<*, *, *>) {
-            launch { flow.emit(msg as PassState<C, State, Env>) }
+            launch { channel.send(msg as PassState<C, State, Env>) }
         }
     }
 
