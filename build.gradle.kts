@@ -47,6 +47,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation("com.typesafe.akka:akka-actor-typed_$akkaScalaBinaryVersion:$akkaVersion")
+                implementation("com.typesafe.akka:akka-stream-typed_$akkaScalaBinaryVersion:$akkaVersion")
                 implementation("com.typesafe.akka:akka-slf4j_$akkaScalaBinaryVersion:$akkaVersion")
 
                 implementation("org.slf4j:slf4j-api:1.7.36")

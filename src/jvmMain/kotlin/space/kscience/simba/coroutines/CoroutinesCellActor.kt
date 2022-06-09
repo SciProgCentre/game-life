@@ -42,16 +42,15 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
             forceIteration()
         }
 
-        @Suppress("UNCHECKED_CAST")
-        fun onPassStateMessage(msg: PassState<*, *, *>) {
+        fun onPassStateMessage(msg: PassState<C, State, Env>) {
             if (msg.timestamp != timestamp) {
                 earlyStates
                     .getOrPut(msg.timestamp) { mutableListOf() }
-                    .add(msg.state as C)
+                    .add(msg.state)
                 return
             }
 
-            internalState.addNeighboursState(msg.state as C)
+            internalState.addNeighboursState(msg.state)
             if (internalState.isReadyForIteration(neighbours.size)) {
                 internalState = internalState.iterate(nextStep)
 
@@ -62,11 +61,12 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
             }
         }
 
+        @Suppress("UNCHECKED_CAST")
         for (msg in channel) { // iterate over incoming messages
             when (msg) {
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState<*, *, *> -> onPassStateMessage(msg)
+                is PassState<*, *, *> -> onPassStateMessage(msg as PassState<C, State, Env>)
             }
         }
     }

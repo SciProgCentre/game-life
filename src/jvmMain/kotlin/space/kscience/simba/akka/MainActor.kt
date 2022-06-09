@@ -1,5 +1,6 @@
-package space.kscience.simba.akka.actor
+package space.kscience.simba.akka
 
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
@@ -16,9 +17,12 @@ import space.kscience.simba.utils.toVector
 
 sealed class MainActorMessage
 class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
-    val dimensions: Vector, val engine: Engine, val neighborsIndices: Set<Vector>, val init: (Vector) -> C, val nextStep: (State, Env) -> State
+    val dimensions: Vector,
+    val neighborsIndices: Set<Vector>,
+    val initState: (Vector) -> C,
+    val spawnCell: (C, (Behavior<Message>) -> ActorRef<Message>) -> AkkaActor
 ): MainActorMessage()
-class SyncIterate: MainActorMessage()
+object SyncIterate: MainActorMessage()
 
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>
@@ -46,9 +50,8 @@ class MainActor private constructor(
         }
 
         field = (0 until msg.dimensions.product()).map { index ->
-            val state = msg.init(index.toVector(msg.dimensions))
-            val cellActor = CellActor<C, State, Env>(msg.engine, state, msg.nextStep)
-            cellActor.akkaCellActorRef = context.spawn(cellActor.akkaCellActor, "Actor_${index}")
+            val state = msg.initState(index.toVector(msg.dimensions))
+            val cellActor = msg.spawnCell(state) { context.spawn(it, "Actor_${index}") }
             cellActor
         }
 

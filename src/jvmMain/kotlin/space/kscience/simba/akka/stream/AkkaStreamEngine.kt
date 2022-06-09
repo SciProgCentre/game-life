@@ -1,4 +1,4 @@
-package space.kscience.simba.akka.actor
+package space.kscience.simba.akka.stream
 
 import akka.actor.typed.ActorSystem
 import space.kscience.simba.akka.MainActor
@@ -11,13 +11,13 @@ import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 
-class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+class AkkaStreamEngine<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
     private val nextStep: (State, Env) -> State
 ) : Engine {
-    private val actorSystem = ActorSystem.create(MainActor.create(), "AkkaActorSystem")
+    private val actorSystem = ActorSystem.create(MainActor.create(), "AkkaStreamSystem")
 
     override var started: Boolean = false
     override val systems: MutableList<EngineSystem> = mutableListOf()
@@ -25,7 +25,7 @@ class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Environme
     override fun init() {
         started = true
         actorSystem.tell(SpawnCells(dimensions, neighborsIndices, init) { state, spawnAkkaActor ->
-            CellActor(this, state, nextStep, spawnAkkaActor)
+            StreamActor(this, state, nextStep, spawnAkkaActor)
         })
     }
 

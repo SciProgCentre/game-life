@@ -6,6 +6,7 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
+import space.kscience.simba.akka.AkkaActor
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.EnvironmentState
@@ -14,17 +15,13 @@ import space.kscience.simba.state.ObjectState
 class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     state: C,
-    nextStep: (State, Env) -> State
-) : Actor {
-    val akkaCellActor = AkkaCellActor.create(state, nextStep)
-    lateinit var akkaCellActorRef: ActorRef<Message>
-
-    override fun handle(msg: Message) {
-        akkaCellActorRef.tell(msg)
-    }
+    nextStep: (State, Env) -> State,
+    spawnAkkaActor: (Behavior<Message>) -> ActorRef<Message>
+) : AkkaActor(spawnAkkaActor) {
+    override val akkaActor = AkkaCellActor.create(state, nextStep)
 }
 
-class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> private constructor(
+private class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> private constructor(
     context: ActorContext<Message>,
     private var state: C,
     private val nextStep: (State, Env) -> State
@@ -34,11 +31,12 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
     private val neighbours = mutableListOf<Actor>()
     private val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
+    @Suppress("UNCHECKED_CAST")
     override fun createReceive(): Receive<Message> {
         return newReceiveBuilder()
             .onMessage(AddNeighbour::class.java, ::onAddNeighbourMessage)
             .onMessage(Iterate::class.java, ::onIterateMessage)
-            .onMessage(PassState::class.java, ::onPassStateMessage)
+            .onMessage(PassState::class.java) { onPassStateMessage(it as PassState<C, State, Env>) }
             .build()
     }
 
@@ -61,16 +59,15 @@ class AkkaCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Environment
         return this
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun onPassStateMessage(msg: PassState<*, *, *>): Behavior<Message> {
+    private fun onPassStateMessage(msg: PassState<C, State, Env>): Behavior<Message> {
         if (msg.timestamp != timestamp) {
             earlyStates
                 .getOrPut(msg.timestamp) { mutableListOf() }
-                .add(msg.state as C)
+                .add(msg.state)
             return this
         }
 
-        state.addNeighboursState(msg.state as C)
+        state.addNeighboursState(msg.state)
         if (state.isReadyForIteration(neighbours.size)) {
             state = state.iterate(nextStep)
 
