@@ -1,64 +1,63 @@
 package space.kscience.simba.akka
 
-import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import space.kscience.simba.engine.*
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
 import space.kscience.simba.utils.toIndex
 import space.kscience.simba.utils.toVector
 
 sealed class MainActorMessage
-class SpawnCells<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+class SpawnCells(
     val dimensions: Vector,
     val neighborsIndices: Set<Vector>,
-    val initState: (Vector) -> C,
-    val spawnCell: (C, (Behavior<Message>) -> ActorRef<Message>) -> AkkaActor
+    val spawnCell: (Vector) -> AkkaActor
 ): MainActorMessage()
+class ActorInitialized(val actorRef: Actor): MainActorMessage()
 object SyncIterate: MainActorMessage()
 
 class MainActor private constructor(
-    context: ActorContext<MainActorMessage>
+    context: ActorContext<MainActorMessage>,
+    private val engine: AkkaEngine
 ): AbstractBehavior<MainActorMessage>(context) {
     lateinit var field: List<Actor>
+    lateinit var neighborsIndices: Set<Vector>
+    lateinit var dimensions: Vector
+
+    private var initializedCount = 0
 
     override fun createReceive(): Receive<MainActorMessage> {
         return newReceiveBuilder()
-            .onMessage(SpawnCells::class.java) { onSpawnCells(it) }
+            .onMessage(SpawnCells::class.java, ::onSpawnCells)
             .onMessage(SyncIterate::class.java, ::onSyncIterate)
+            .onMessage(ActorInitialized::class.java, ::onActorInitialized)
             .build()
     }
 
-    private fun <C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState> onSpawnCells(msg: SpawnCells<C, State, Env>): MainActor {
-        fun cyclicMod(i: Int, n: Int): Int {
-            return if (i >= 0) i % n else n + i % n
-        }
+    private fun cyclicMod(i: Int, n: Int): Int {
+        return if (i >= 0) i % n else n + i % n
+    }
 
-        fun getNeighboursIds(v: Vector): List<Vector> {
-            return msg.neighborsIndices.map { neighbour ->
-                v.zip(msg.dimensions)
-                    .mapIndexed { index, (position, dimensionBorder) -> cyclicMod(position - neighbour[index], dimensionBorder) }
-                    .toIntArray()
-            }
+    private fun getNeighboursIds(v: Vector): List<Vector> {
+        return neighborsIndices.map { neighbour ->
+            v.zip(dimensions)
+                .mapIndexed { index, (position, dimensionBorder) -> cyclicMod(position - neighbour[index], dimensionBorder) }
+                .toIntArray()
         }
+    }
+
+    private fun onSpawnCells(msg: SpawnCells): MainActor {
+        neighborsIndices = msg.neighborsIndices
+        dimensions = msg.dimensions
 
         field = (0 until msg.dimensions.product()).map { index ->
-            val state = msg.initState(index.toVector(msg.dimensions))
-            val cellActor = msg.spawnCell(state) { context.spawn(it, "Actor_${index}") }
-            cellActor
-        }
-
-        field.forEachIndexed { index, actorRef ->
-            getNeighboursIds(index.toVector(msg.dimensions))
-                .map { v -> field[v.toIndex(msg.dimensions)] }
-                .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
+            val actor = msg.spawnCell(index.toVector(msg.dimensions))
+            actor.akkaActorRef = context.spawn(actor.akkaActor, "Actor_${index}")
+            actor
         }
 
         return this
@@ -69,9 +68,22 @@ class MainActor private constructor(
         return this
     }
 
+    private fun onActorInitialized(msg: ActorInitialized): MainActor {
+        if (++initializedCount == field.size) {
+            engine.start {
+                field.forEachIndexed { index, actorRef ->
+                    getNeighboursIds(index.toVector(dimensions))
+                        .map { v -> field[v.toIndex(dimensions)] }
+                        .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
+                }
+            }
+        }
+        return this
+    }
+
     companion object {
-        fun create(): Behavior<MainActorMessage> {
-            return Behaviors.setup { MainActor(it) }
+        fun create(engine: AkkaEngine): Behavior<MainActorMessage> {
+            return Behaviors.setup { MainActor(it, engine) }
         }
     }
 }

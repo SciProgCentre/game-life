@@ -1,6 +1,6 @@
 package space.kscience.simba.akka.stream
 
-import akka.actor.typed.ActorRef
+import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
@@ -11,7 +11,9 @@ import akka.stream.SourceRef
 import akka.stream.javadsl.Sink
 import akka.stream.javadsl.Source
 import akka.stream.javadsl.StreamRefs
+import space.kscience.simba.akka.ActorInitialized
 import space.kscience.simba.akka.AkkaActor
+import space.kscience.simba.akka.MainActorMessage
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.EnvironmentState
@@ -21,8 +23,7 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
     override val engine: Engine,
     state: C,
     nextStep: (State, Env) -> State,
-    spawnAkkaActor: (Behavior<Message>) -> ActorRef<Message>
-): AkkaActor(spawnAkkaActor) {
+): AkkaActor() {
     private lateinit var queue: BoundedSourceQueue<PassState<C, State, Env>>
     private lateinit var sourceRef: SourceRef<PassState<C, State, Env>>
 
@@ -43,6 +44,8 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
             val (preMat, source) = queueDeclaration.preMaterialize(context.system).let { it.first() to it.second() }
             queue = preMat
             sourceRef = source.runWith(StreamRefs.sourceRef(), context.system)
+
+            (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized(this@StreamActor))
         }
 
         @Suppress("UNCHECKED_CAST")
