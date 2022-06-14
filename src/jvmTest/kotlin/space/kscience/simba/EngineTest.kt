@@ -3,6 +3,7 @@ package space.kscience.simba
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import space.kscience.simba.akka.actor.AkkaActorEngine
+import space.kscience.simba.akka.stream.AkkaStreamEngine
 import space.kscience.simba.coroutines.CoroutinesActorEngine
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.*
@@ -14,9 +15,6 @@ import kotlin.test.assertEquals
 class EngineTest {
     private val n = 7
     private val m = 7
-
-    private val bigN = 100
-    private val bigM = 100
 
     private fun fillSquare(vector: Vector): ActorGameOfLifeCell {
         val (i, j) = vector
@@ -48,10 +46,24 @@ class EngineTest {
     }
 
     @Test
-    fun testEnginesEquality() {
+    fun testAkkaStreamGameOfLife() {
+        val simulationEngine = AkkaStreamEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
+        checkEngineCorrectness(simulationEngine)
+    }
+
+    @Test
+    fun testAkkaStreamGameOfLifeAfterIterations() {
+        val simulationEngine = AkkaStreamEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare, ::actorNextStep)
+        checkEngineCorrectnessAfterIterations(simulationEngine)
+    }
+
+    @Test
+    fun testAkkaActorVsCoroutines() {
         val random1 = Random(0)
         val random2 = Random(0)
-        val iterations = 10
+
+        val bigN = 100
+        val bigM = 100
 
         val akkaEngine = AkkaActorEngine(
             intArrayOf(bigN, bigM),
@@ -66,21 +78,51 @@ class EngineTest {
             ::actorNextStep
         )
 
-        val akkaPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
-        akkaEngine.addNewSystem(akkaPrintSystem)
-        akkaEngine.init()
+        checkEnginesEquality(akkaEngine, coroutinesEngine, bigM * bigN, 10)
+    }
 
-        val coroutinesPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(bigN * bigM)
-        coroutinesEngine.addNewSystem(coroutinesPrintSystem)
-        coroutinesEngine.init()
+    @Test
+    fun testAkkaActorVsAkkaStream() {
+        val random1 = Random(0)
+        val random2 = Random(0)
+
+        // we are using small field, but more iterations here because of problems with memory in streams
+        val bigN = 10
+        val bigM = 10
+
+        val akkaEngine = AkkaActorEngine(
+            intArrayOf(bigN, bigM),
+            gameOfLifeNeighbours,
+            { (i, j) -> classicCell(i, j, random1.nextBoolean()) },
+            ::actorNextStep
+        )
+        val akkaStreamEngine = AkkaStreamEngine(
+            intArrayOf(bigN, bigM),
+            gameOfLifeNeighbours,
+            { (i, j) -> classicCell(i, j, random2.nextBoolean()) },
+            ::actorNextStep
+        )
+        checkEnginesEquality(akkaEngine, akkaStreamEngine, bigM * bigN, 1000)
+    }
+
+    private fun checkEnginesEquality(firstEngine: Engine, secondEngine: Engine, size: Int, iterations: Int) {
+        val firstPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(size)
+        firstEngine.addNewSystem(firstPrintSystem)
+        firstEngine.init()
+
+        val secondPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(size)
+        secondEngine.addNewSystem(secondPrintSystem)
+        secondEngine.init()
 
         for (i in 0..iterations) {
             runBlocking {
-                akkaEngine.iterate()
-                coroutinesEngine.iterate()
-                val akkaField = actorsToString(akkaPrintSystem.render(i + 1L).toList())
-                val coroutinesField = actorsToString(coroutinesPrintSystem.render(i + 1L).toList())
-                assertEquals(akkaField.trim(), coroutinesField.trim())
+                firstEngine.iterate()
+                secondEngine.iterate()
+
+                val firstField = actorsToString(firstPrintSystem.render(i + 1L).toList())
+                val secondField = actorsToString(secondPrintSystem.render(i + 1L).toList())
+
+                assertEquals(firstField.trim(), secondField.trim())
             }
         }
     }

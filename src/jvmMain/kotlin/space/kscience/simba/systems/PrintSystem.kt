@@ -19,6 +19,7 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
 
     private val statesByTimestamp = mutableMapOf<Long, MutableSet<C>>()
     private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
+    private val lock = Object()
 
     private val channel = Channel<PassState<C, State, Env>>()
 
@@ -45,11 +46,13 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
 
     @Synchronized
     private fun renderAvailable(iteration: Long) {
-        continuations
-            .filter { it.first == iteration }
-            .forEach { it.second.resume(statesByTimestamp[iteration]!!) }
+        synchronized(lock) {
+            continuations
+                .filter { it.first == iteration }
+                .forEach { it.second.resume(statesByTimestamp[iteration]!!) }
 
-        continuations.removeIf { it.first == iteration }
+            continuations.removeIf { it.first == iteration }
+        }
     }
 
     fun isCompleteFor(iteration: Long): Boolean {
@@ -61,7 +64,9 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
         val states = statesByTimestamp[iteration]
         return if (states == null || states.size != fieldSize) {
             suspendCoroutine<Set<C>> {
-                continuations += iteration to it
+                synchronized(lock) {
+                    continuations += iteration to it
+                }
             }
         } else {
             states

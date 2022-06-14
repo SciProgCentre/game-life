@@ -75,8 +75,7 @@ class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentStat
             if (state.isReadyForIteration(neighbours.size)) {
                 state = state.iterate(nextStep)
 
-                iterations--
-                if (iterations > 0) {
+                if (--iterations > 0) {
                     forceIteration()
                 }
             }
