@@ -45,3 +45,7 @@ fun Vector2.normalized(): Vector2 {
     return if (mag > kEpsilon) this / mag else zero
 }
 fun Random.randomVector() = Vector2(this.nextDouble(), this.nextDouble())
+
+fun Vector2.isInsideBox(width: Double, height: Double): Boolean {
+    return first > 0 && first < width - 1 && second > 0 && second < height - 1
+}

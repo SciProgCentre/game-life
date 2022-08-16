@@ -12,8 +12,9 @@ import io.ktor.server.netty.*
 import space.kscience.simba.simulation.BoidsSimulation
 import space.kscience.simba.simulation.GameOfLifeSimulation
 import space.kscience.simba.simulation.MitosisSimulation
+import space.kscience.simba.simulation.SnakeLearningSimulation
 
-private val simulations = listOf(GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation())
+private val simulations = listOf(GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation())
 
 fun main() {
     embeddedServer(Netty, 9090) {

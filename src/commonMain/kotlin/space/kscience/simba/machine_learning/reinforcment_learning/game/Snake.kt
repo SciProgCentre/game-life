@@ -6,7 +6,16 @@ import kotlin.random.Random
 
 class Snake(val width: Int, val height: Int, seed: Int = 0) {
     enum class Direction(val position: Vector2) {
-        UP(Vector2(0.0, 1.0)), DOWN(Vector2(0.0, -1.0)), LEFT(Vector2(-1.0, 0.0)), RIGHT(Vector2(1.0, 0.0))
+        UP(Vector2(0.0, 1.0)), DOWN(Vector2(0.0, -1.0)), LEFT(Vector2(-1.0, 0.0)), RIGHT(Vector2(1.0, 0.0));
+
+        fun getOpposite(): Direction {
+            return when(this) {
+                UP -> DOWN
+                DOWN -> UP
+                LEFT -> RIGHT
+                RIGHT -> LEFT
+            }
+        }
     }
 
     private val rand = Random(seed)
@@ -21,6 +30,13 @@ class Snake(val width: Int, val height: Int, seed: Int = 0) {
         if (width <= 0) throw AssertionError("Width must be positive, but got width=${width}")
         if (height <= 0) throw AssertionError("Height must be positive, but got height=${height}")
 
+        restart()
+    }
+
+    fun restart() {
+        body.clear()
+        ateBaitLastMove = false
+        gameOver = false
         headPosition = randomVectorWithinBounds()
         generateNewBait()
     }
@@ -62,6 +78,8 @@ class Snake(val width: Int, val height: Int, seed: Int = 0) {
     }
 
     fun isGameOver() = gameOver
+
+    fun getHeadPosition(): Vector2 = headPosition
 
     fun getBodyWithHead(): List<Vector2> = body + headPosition
 
