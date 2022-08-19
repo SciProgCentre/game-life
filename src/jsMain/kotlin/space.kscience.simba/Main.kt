@@ -14,7 +14,7 @@ private val games = listOf(
     GameOfLife(100, 100, 5),
     Boids(1000, 1000),
     Mitosis(100, 100, 5),
-    SnakeGame(10, 10, 5),
+    SnakeGame(10, 10, 20),
 )
 
 private fun GameSystem.initGame() {

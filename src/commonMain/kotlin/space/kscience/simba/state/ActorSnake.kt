@@ -38,8 +38,8 @@ data class ActorSnakeCell(
 fun Snake.play(
     state: ActorSnakeState,
     maxIterations: Int,
-    nextDirection: (QTable<SnakeState, SnakeAction>, SnakeState, Snake.Direction?) -> Snake.Direction,
-    afterEachIteration : ((Snake, SnakeState, SnakeAction) -> Unit)? = null,
+    nextDirection: (QTable<SnakeState, SnakeAction>, SnakeState, oldDirection: Snake.Direction?) -> Snake.Direction,
+    afterEachIteration : ((Snake, oldState: SnakeState, SnakeAction) -> Unit)? = null,
 ) {
     var iteration = 0
     var direction: Snake.Direction? = null
@@ -58,19 +58,19 @@ fun Snake.train(
     state: ActorSnakeState,
     maxIterations: Int,
     trainProbability: Float,
-    rewardFunction : (Snake.() -> Double)
+    rewardFunction : (Snake.(oldState: SnakeState) -> Double)
 ) {
     fun nextDirection(qTable: QTable<SnakeState, SnakeAction>, currentState: SnakeState, oldDirection: Snake.Direction?): Snake.Direction {
         return qTable.getNextDirection(
-            currentState, random.getRandomSnakeDirection(oldDirection), random.nextDouble() >= trainProbability
+            currentState, random.getRandomSnakeDirection(oldDirection), oldDirection, random.nextDouble() >= trainProbability
         )
     }
 
     // play and train
-    play(state, maxIterations, ::nextDirection) { _, currentState, action ->
-        val reward = this.rewardFunction()
+    play(state, maxIterations, ::nextDirection) { game, oldState, action ->
+        val reward = game.rewardFunction(oldState)
         val nextState = SnakeState(getBodyWithHead(), getBaitPosition())
-        state.table.update(currentState, nextState, action, reward)
+        state.table.update(oldState, nextState, action, reward)
     }
 }
 
@@ -82,11 +82,12 @@ fun Random.getRandomSnakeDirection(lastDirection: Snake.Direction?): Snake.Direc
     return randomDirection
 }
 
-private fun QTable<SnakeState, SnakeAction>.getNextDirection(
-    currentState: SnakeState, randomDirection: Snake.Direction, useBestKnownAction: Boolean
+fun QTable<SnakeState, SnakeAction>.getNextDirection(
+    currentState: SnakeState, randomDirection: Snake.Direction, oldDirection: Snake.Direction?, useBestKnownAction: Boolean
 ): Snake.Direction {
     return if (useBestKnownAction) {
-        getBestActionForGivenState(currentState)?.direction ?: randomDirection
+        val bestAction = getBestActionForGivenState(currentState)?.direction
+        return if (bestAction == null || bestAction == oldDirection?.getOpposite()) randomDirection else bestAction
     } else {
         randomDirection
     }
@@ -98,7 +99,7 @@ interface Action
 @kotlinx.serialization.Serializable
 class QTable<S: State, A: Action>(private val learningRate: Double = 0.1, private val discountFactor: Double = 0.5) {
     private val qTable = mutableMapOf<S, MutableMap<A, Double>>()
-    private val dataInOrder = mutableListOf<Triple<S, A, Double>>()
+//    private val dataInOrder = mutableListOf<Triple<S, A, Double>>()
 
     fun getBestActionForGivenState(state: S): A? {
         return qTable[state]?.maxByOrNull { it.value }?.key
@@ -112,13 +113,33 @@ class QTable<S: State, A: Action>(private val learningRate: Double = 0.1, privat
         val newValue = (1 - learningRate) * oldValue + learningRate * (reward + discountFactor * bestValueForNextState)
         qTable[currentState]?.set(action, newValue)
 
-        dataInOrder += Triple(currentState, action, reward)
+//        dataInOrder += Triple(currentState, action, reward)
     }
 
     fun combine(other: QTable<S, A>) {
-        for (i in 0 until other.dataInOrder.size - 1) {
-            val (currentState, action, reward) = other.dataInOrder[i]
-            update(currentState, other.dataInOrder[i + 1].first, action, reward)
+//        for (i in 0 until other.dataInOrder.size - 1) {
+//            val (currentState, action, reward) = other.dataInOrder[i]
+//            update(currentState, other.dataInOrder[i + 1].first, action, reward)
+//        }
+        other.qTable.forEach { (key, value) ->
+            if (!qTable.containsKey(key)) {
+                qTable[key] = value
+            } else {
+                value.forEach { (action, reward) ->
+                    if (qTable[key]?.containsKey(action) != true) {
+                        qTable[key]?.set(action, reward)
+                    } else {
+                        qTable[key]?.set(action, (qTable[key]!![action]!! + reward) / 2.0)
+                    }
+                }
+            }
+        }
+    }
+
+    fun deepCopy(): QTable<S, A> {
+        return QTable<S, A>(learningRate, discountFactor).apply {  ->
+            this@QTable.qTable.forEach { (key, value) -> this.qTable[key] = value.toMutableMap() }
+//            this.dataInOrder.addAll(this@QTable.dataInOrder)
         }
     }
 }

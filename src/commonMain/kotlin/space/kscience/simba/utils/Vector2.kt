@@ -47,5 +47,5 @@ fun Vector2.normalized(): Vector2 {
 fun Random.randomVector() = Vector2(this.nextDouble(), this.nextDouble())
 
 fun Vector2.isInsideBox(width: Double, height: Double): Boolean {
-    return first > 0 && first < width - 1 && second > 0 && second < height - 1
+    return first >= 0 && first < width && second >= 0 && second < height
 }
