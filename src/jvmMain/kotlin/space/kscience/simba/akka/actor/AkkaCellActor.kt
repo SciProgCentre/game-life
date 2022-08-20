@@ -17,14 +17,16 @@ import space.kscience.simba.state.ObjectState
 class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     state: C,
-    nextStep: (State, Env) -> State
+    nextState: (State, Env) -> State,
+    nextEnv: (State, Env) -> Env,
 ) : AkkaActor() {
-    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaCellActor(it, state, nextStep) }
+    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaCellActor(it, state, nextState, nextEnv) }
 
     private inner class AkkaCellActor<C : Cell<C, State, Env>, State : ObjectState, Env : EnvironmentState>(
         context: ActorContext<Message>,
         private var state: C,
-        private val nextStep: (State, Env) -> State
+        private val nextState: (State, Env) -> State,
+        private val nextEnv: (State, Env) -> Env,
     ) : AbstractBehavior<Message>(context) {
         private var timestamp = 0L
         private var iterations = 0
@@ -73,7 +75,7 @@ class CellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentStat
 
             state.addNeighboursState(msg.state)
             if (state.isReadyForIteration(neighbours.size)) {
-                state = state.iterate(nextStep)
+                state = state.iterate(nextState, nextEnv)
 
                 if (--iterations > 0) {
                     forceIteration()

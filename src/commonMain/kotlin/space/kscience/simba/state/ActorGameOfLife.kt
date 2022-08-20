@@ -11,17 +11,16 @@ val gameOfLifeNeighbours: Set<Vector> = setOf(
 @kotlinx.serialization.Serializable
 data class ActorGameOfLifeState(val isAlive: Boolean) : ObjectState
 
+@kotlinx.serialization.Serializable
 data class ActorGameOfLifeEnv(val neighbours: MutableList<ActorGameOfLifeCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
 data class ActorGameOfLifeCell(
-    val i: Int, val j: Int, private val state: ActorGameOfLifeState
+    val i: Int, val j: Int,
+    override val state: ActorGameOfLifeState,
+    override val environmentState: ActorGameOfLifeEnv = ActorGameOfLifeEnv(mutableListOf())
 ) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>() {
-    @kotlinx.serialization.Transient
     override val vectorId: Vector = intArrayOf(i, j)
-
-    @kotlinx.serialization.Transient
-    private val environmentState = ActorGameOfLifeEnv(mutableListOf())
 
     override fun isReadyForIteration(expectedCount: Int): Boolean {
         return environmentState.neighbours.size == expectedCount
@@ -31,8 +30,11 @@ data class ActorGameOfLifeCell(
         environmentState.neighbours.add(cell)
     }
 
-    override fun iterate(convert: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeState): ActorGameOfLifeCell {
-        return ActorGameOfLifeCell(i, j, convert(state, environmentState))
+    override fun iterate(
+        convertState: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeState,
+        convertEnv: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeEnv
+    ): ActorGameOfLifeCell {
+        return ActorGameOfLifeCell(i, j, convertState(state, environmentState), convertEnv(state, environmentState))
     }
 
     fun isAlive(): Boolean {

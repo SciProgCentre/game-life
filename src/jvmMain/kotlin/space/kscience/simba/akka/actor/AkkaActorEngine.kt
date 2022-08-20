@@ -11,11 +11,12 @@ class AkkaActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Environme
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
-    private val nextStep: (State, Env) -> State
+    private val nextState: (State, Env) -> State,
+    private val nextEnv: (State, Env) -> Env = { _, env -> env },
 ) : AkkaEngine() {
     override fun init() {
         actorSystem.tell(SpawnCells(dimensions, neighborsIndices) { index ->
-            CellActor(this, init(index), nextStep)
+            CellActor(this, init(index), nextState, nextEnv)
         })
     }
 }

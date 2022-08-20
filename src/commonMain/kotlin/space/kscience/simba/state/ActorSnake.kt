@@ -8,19 +8,16 @@ import kotlin.random.Random
 @kotlinx.serialization.Serializable
 data class ActorSnakeState(val table: QTable<SnakeState, SnakeAction>) : ObjectState
 
-data class ActorSnakeEnv(
-    val neighbours: MutableList<ActorSnakeCell>
-) : EnvironmentState {}
+@kotlinx.serialization.Serializable
+data class ActorSnakeEnv(val neighbours: MutableList<ActorSnakeCell>) : EnvironmentState {}
 
 @kotlinx.serialization.Serializable
 data class ActorSnakeCell(
-    val id: Int, val state: ActorSnakeState
+    val id: Int,
+    override val state: ActorSnakeState,
+    override val environmentState: ActorSnakeEnv = ActorSnakeEnv(mutableListOf())
 ) : Cell<ActorSnakeCell, ActorSnakeState, ActorSnakeEnv>() {
-    @kotlinx.serialization.Transient
     override val vectorId: Vector = intArrayOf(id)
-
-    @kotlinx.serialization.Transient
-    private val environmentState = ActorSnakeEnv(mutableListOf())
 
     override fun isReadyForIteration(expectedCount: Int): Boolean {
         return environmentState.neighbours.size == expectedCount
@@ -30,8 +27,11 @@ data class ActorSnakeCell(
         environmentState.neighbours.add(cell)
     }
 
-    override fun iterate(convert: (ActorSnakeState, ActorSnakeEnv) -> ActorSnakeState): ActorSnakeCell {
-        return ActorSnakeCell(id, convert(state, environmentState))
+    override fun iterate(
+        convertState: (ActorSnakeState, ActorSnakeEnv) -> ActorSnakeState,
+        convertEnv: (ActorSnakeState, ActorSnakeEnv) -> ActorSnakeEnv
+    ): ActorSnakeCell {
+        return ActorSnakeCell(id, convertState(state, environmentState), convertEnv(state, environmentState))
     }
 }
 

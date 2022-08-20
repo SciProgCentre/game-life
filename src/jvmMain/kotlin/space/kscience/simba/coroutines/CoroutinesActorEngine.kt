@@ -16,7 +16,8 @@ class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Env
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
-    private val nextStep: (State, Env) -> State
+    private val nextState: (State, Env) -> State,
+    private val nextEnv: (State, Env) -> Env = { _, env -> env },
 ): Engine, CoroutineScope {
     private lateinit var field: List<Actor>
 
@@ -43,7 +44,7 @@ class CoroutinesActorEngine<C: Cell<C, State, Env>, State: ObjectState, Env: Env
 
         field = (0 until dimensions.product()).map { index ->
             val state = init(index.toVector(dimensions))
-            CoroutinesCellActor(this, coroutineContext, state, nextStep)
+            CoroutinesCellActor(this, coroutineContext, state, nextState, nextEnv)
         }
 
         field.forEachIndexed { index, actorRef ->

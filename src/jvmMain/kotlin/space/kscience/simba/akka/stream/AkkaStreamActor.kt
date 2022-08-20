@@ -25,13 +25,14 @@ import java.util.concurrent.atomic.AtomicInteger
 class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
     override val engine: Engine,
     state: C,
-    nextStep: (State, Env) -> State,
+    nextState: (State, Env) -> State,
+    nextEnv: (State, Env) -> Env,
 ): AkkaActor() {
     private lateinit var queue: SourceQueue<PassState<C, State, Env>>
     private lateinit var subscriptions: Source<PassState<C, State, Env>, NotUsed>
 
     private var subscribed = AtomicInteger(0)
-    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaStreamActor(it, state, nextStep) }
+    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaStreamActor(it, state, nextState, nextEnv) }
 
     fun createNewSubscriber(context: ActorContext<Message>): SourceRef<PassState<C, State, Env>> {
         return (subscriptions.runWith(StreamRefs.sourceRef(), context.system) as SourceRef<PassState<C, State, Env>>)
@@ -40,7 +41,8 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
     private inner class AkkaStreamActor(
         context: ActorContext<Message>,
         private var state: C,
-        private val nextStep: (State, Env) -> State
+        private val nextState: (State, Env) -> State,
+        private val nextEnv: (State, Env) -> Env,
     ): AbstractBehavior<Message>(context) {
         private var timestamp = 0L
         private var iterations = AtomicInteger(0)
@@ -100,7 +102,7 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
             state.addNeighboursState(neighbour)
 
             if (state.isReadyForIteration(neighboursCount)) {
-                state = state.iterate(nextStep)
+                state = state.iterate(nextState, nextEnv)
 
                 if (iterations.decrementAndGet() > 0) {
                     forceIteration()

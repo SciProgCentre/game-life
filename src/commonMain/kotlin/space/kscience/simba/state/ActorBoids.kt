@@ -7,17 +7,16 @@ import space.kscience.simba.utils.Vector2
 @kotlinx.serialization.Serializable
 data class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2) : ObjectState
 
+@kotlinx.serialization.Serializable
 data class ActorBoidsEnvironmentState(val field: MutableList<ActorBoidsCell>) : EnvironmentState
 
 @kotlinx.serialization.Serializable
 data class ActorBoidsCell(
-    val id: Int, val state: ActorBoidsState
+    val id: Int,
+    override val state: ActorBoidsState,
+    override val environmentState: ActorBoidsEnvironmentState = ActorBoidsEnvironmentState(mutableListOf())
 ): Cell<ActorBoidsCell, ActorBoidsState, ActorBoidsEnvironmentState>() {
-    @Transient
     override val vectorId: Vector = intArrayOf(id)
-
-    @kotlinx.serialization.Transient
-    private val environmentState = ActorBoidsEnvironmentState(mutableListOf())
 
     override fun isReadyForIteration(expectedCount: Int): Boolean {
         return environmentState.field.size == expectedCount
@@ -27,7 +26,10 @@ data class ActorBoidsCell(
         environmentState.field.add(cell)
     }
 
-    override fun iterate(convert: (ActorBoidsState, ActorBoidsEnvironmentState) -> ActorBoidsState): ActorBoidsCell {
-        return ActorBoidsCell(id, convert(state, environmentState))
+    override fun iterate(
+        convertState: (ActorBoidsState, ActorBoidsEnvironmentState) -> ActorBoidsState,
+        convertEnv: (ActorBoidsState, ActorBoidsEnvironmentState) -> ActorBoidsEnvironmentState
+    ): ActorBoidsCell {
+        return ActorBoidsCell(id, convertState(state, environmentState), convertEnv(state, environmentState))
     }
 }
