@@ -12,29 +12,16 @@ val gameOfLifeNeighbours: Set<Vector> = setOf(
 data class ActorGameOfLifeState(val isAlive: Boolean) : ObjectState
 
 @kotlinx.serialization.Serializable
-data class ActorGameOfLifeEnv(val neighbours: MutableList<ActorGameOfLifeCell>) : EnvironmentState {}
-
-@kotlinx.serialization.Serializable
 data class ActorGameOfLifeCell(
     val i: Int, val j: Int,
     override val state: ActorGameOfLifeState,
-    override val environmentState: ActorGameOfLifeEnv = ActorGameOfLifeEnv(mutableListOf())
-) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>() {
+) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState>() {
     override val vectorId: Vector = intArrayOf(i, j)
 
-    override fun isReadyForIteration(expectedCount: Int): Boolean {
-        return environmentState.neighbours.size == expectedCount
-    }
-
-    override fun addNeighboursState(cell: ActorGameOfLifeCell) {
-        environmentState.neighbours.add(cell)
-    }
-
     override fun iterate(
-        convertState: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeState,
-        convertEnv: (ActorGameOfLifeState, ActorGameOfLifeEnv) -> ActorGameOfLifeEnv
+        convertState: (ActorGameOfLifeState, List<ActorGameOfLifeCell>) -> ActorGameOfLifeState
     ): ActorGameOfLifeCell {
-        return ActorGameOfLifeCell(i, j, convertState(state, environmentState), convertEnv(state, environmentState))
+        return ActorGameOfLifeCell(i, j, convertState(state, neighbours))
     }
 
     fun isAlive(): Boolean {
@@ -48,8 +35,8 @@ data class ActorGameOfLifeCell(
 
 fun classicCell(i: Int, j: Int, state: Boolean) = ActorGameOfLifeCell(i, j, ActorGameOfLifeState(state))
 
-fun actorNextStep(state: ActorGameOfLifeState, environmentState: ActorGameOfLifeEnv): ActorGameOfLifeState {
-    val aliveNeighbours = environmentState.neighbours.count { it.isAlive() }
+fun actorNextStep(state: ActorGameOfLifeState, neighbours: List<ActorGameOfLifeCell>): ActorGameOfLifeState {
+    val aliveNeighbours = neighbours.count { it.isAlive() }
     if (state.isAlive) {
         if (aliveNeighbours != 2 && aliveNeighbours != 3) {
             return ActorGameOfLifeState(false)

@@ -9,7 +9,7 @@ import kotlin.math.pow
 import kotlin.random.Random
 
 // original work https://github.com/MaxRobinsonTheGreat/NeuralPatterns
-class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState, ActorMitosisEnv>("mitosis") {
+class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState>("mitosis") {
     private val random = Random(0)
     private val n = 100
     private val m = 100
@@ -22,7 +22,7 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState, ActorMi
 
     override val engine: Engine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell, ::nextStep)
 
-    override val printSystem: PrintSystem<ActorMitosisCell, ActorMitosisState, ActorMitosisEnv> = PrintSystem(n * m)
+    override val printSystem: PrintSystem<ActorMitosisCell, ActorMitosisState> = PrintSystem(n * m)
 
     init {
         engine.addNewSystem(printSystem)
@@ -38,8 +38,8 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState, ActorMi
         return ActorMitosisCell(vector, ActorMitosisState(random.nextDouble()))
     }
 
-    private fun nextStep(state: ActorMitosisState, environmentState: ActorMitosisEnv): ActorMitosisState {
-        val image = environmentState.neighbours.sorted().map { it.state.colorIntensity }.toMutableList()
+    private fun nextStep(state: ActorMitosisState, neighbours: List<ActorMitosisCell>): ActorMitosisState {
+        val image = neighbours.sorted().map { it.state.colorIntensity }.toMutableList()
         image.add(filter.size / 2, state.colorIntensity)
 
         val convolution = filter.zip(image).sumOf { (i, j) -> i * j }

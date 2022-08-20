@@ -5,13 +5,12 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import space.kscience.simba.systems.PrintSystem
 
-abstract class Simulation<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(private val name: String) {
+abstract class Simulation<C: Cell<C, State>, State: ObjectState>(private val name: String) {
     protected abstract val engine: Engine
-    protected abstract val printSystem: PrintSystem<C, State, Env>
+    protected abstract val printSystem: PrintSystem<C, State>
 
     protected open fun Routing.addAdditionalRouting() {}
 

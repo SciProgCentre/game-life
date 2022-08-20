@@ -8,20 +8,19 @@ import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
 import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(private val fieldSize: Int) : EngineSystem, CoroutineScope {
+class PrintSystem<C: Cell<C, State>, State: ObjectState>(private val fieldSize: Int) : EngineSystem, CoroutineScope {
     override val coroutineContext = Dispatchers.Unconfined
 
     private val statesByTimestamp = mutableMapOf<Long, MutableSet<C>>()
     private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
     private val lock = Object()
 
-    private val channel = Channel<PassState<C, State, Env>>()
+    private val channel = Channel<PassState<C, State>>()
 
     init {
         launch {
@@ -39,8 +38,8 @@ class PrintSystem<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
 
     @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
-        if (msg is PassState<*, *, *>) {
-            launch { channel.send(msg as PassState<C, State, Env>) }
+        if (msg is PassState<*, *>) {
+            launch { channel.send(msg as PassState<C, State>) }
         }
     }
 

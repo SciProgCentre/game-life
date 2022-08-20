@@ -9,29 +9,16 @@ import kotlin.random.Random
 data class ActorSnakeState(val table: QTable<SnakeState, SnakeAction>) : ObjectState
 
 @kotlinx.serialization.Serializable
-data class ActorSnakeEnv(val neighbours: MutableList<ActorSnakeCell>) : EnvironmentState {}
-
-@kotlinx.serialization.Serializable
 data class ActorSnakeCell(
     val id: Int,
     override val state: ActorSnakeState,
-    override val environmentState: ActorSnakeEnv = ActorSnakeEnv(mutableListOf())
-) : Cell<ActorSnakeCell, ActorSnakeState, ActorSnakeEnv>() {
+) : Cell<ActorSnakeCell, ActorSnakeState>() {
     override val vectorId: Vector = intArrayOf(id)
 
-    override fun isReadyForIteration(expectedCount: Int): Boolean {
-        return environmentState.neighbours.size == expectedCount
-    }
-
-    override fun addNeighboursState(cell: ActorSnakeCell) {
-        environmentState.neighbours.add(cell)
-    }
-
     override fun iterate(
-        convertState: (ActorSnakeState, ActorSnakeEnv) -> ActorSnakeState,
-        convertEnv: (ActorSnakeState, ActorSnakeEnv) -> ActorSnakeEnv
+        convertState: (ActorSnakeState, List<ActorSnakeCell>) -> ActorSnakeState,
     ): ActorSnakeCell {
-        return ActorSnakeCell(id, convertState(state, environmentState), convertEnv(state, environmentState))
+        return ActorSnakeCell(id, convertState(state, neighbours))
     }
 }
 

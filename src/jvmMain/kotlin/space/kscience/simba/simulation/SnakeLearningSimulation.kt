@@ -10,7 +10,7 @@ import space.kscience.simba.utils.isInsideBox
 import kotlin.math.pow
 import kotlin.random.Random
 
-class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState, ActorSnakeEnv>("snake") {
+class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snake") {
     private val random = Random(0)
     private val actorsCount = 100
     private val maxIterations = 100
@@ -18,7 +18,7 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState, Actor
 
     override val engine: Engine = createEngine()
 
-    override val printSystem: PrintSystem<ActorSnakeCell, ActorSnakeState, ActorSnakeEnv> = PrintSystem(actorsCount)
+    override val printSystem: PrintSystem<ActorSnakeCell, ActorSnakeState> = PrintSystem(actorsCount)
 
     init {
         engine.addNewSystem(printSystem)
@@ -35,9 +35,9 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState, Actor
         )
     }
 
-    private fun nextState(state: ActorSnakeState, env: ActorSnakeEnv): ActorSnakeState {
+    private fun nextState(state: ActorSnakeState, neighbours: List<ActorSnakeCell>): ActorSnakeState {
         val stateCopy = ActorSnakeState(state.table.deepCopy())
-        env.neighbours.forEach { stateCopy.table.combine(it.state.table) }
+        neighbours.forEach { stateCopy.table.combine(it.state.table) }
 
         val gameSize = 10 to 10
         val snakeGame = Snake(gameSize.first, gameSize.second, random.nextInt())

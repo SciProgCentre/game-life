@@ -106,11 +106,11 @@ class EngineTest {
     }
 
     private fun checkEnginesEquality(firstEngine: Engine, secondEngine: Engine, size: Int, iterations: Int) {
-        val firstPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(size)
+        val firstPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(size)
         firstEngine.addNewSystem(firstPrintSystem)
         firstEngine.init()
 
-        val secondPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(size)
+        val secondPrintSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(size)
         secondEngine.addNewSystem(secondPrintSystem)
         secondEngine.init()
 
@@ -128,7 +128,7 @@ class EngineTest {
     }
 
     private fun checkEngineCorrectness(simulationEngine: Engine) {
-        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(n * m)
         simulationEngine.addNewSystem(printSystem)
         simulationEngine.init()
 
@@ -152,7 +152,7 @@ class EngineTest {
     }
 
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine) {
-        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(n * m)
         simulationEngine.addNewSystem(printSystem)
         simulationEngine.init()
 

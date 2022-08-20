@@ -15,34 +15,31 @@ import space.kscience.simba.akka.AkkaActor
 import space.kscience.simba.akka.MainActorMessage
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
 
 // TODO fix memory leak in case when field is big (100 x 100)
 // TODO get rid of synchronized blocks
-class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+class StreamActor<C: Cell<C, State>, State: ObjectState>(
     override val engine: Engine,
     state: C,
-    nextState: (State, Env) -> State,
-    nextEnv: (State, Env) -> Env,
+    nextState: (State, List<C>) -> State,
 ): AkkaActor() {
-    private lateinit var queue: SourceQueue<PassState<C, State, Env>>
-    private lateinit var subscriptions: Source<PassState<C, State, Env>, NotUsed>
+    private lateinit var queue: SourceQueue<PassState<C, State>>
+    private lateinit var subscriptions: Source<PassState<C, State>, NotUsed>
 
     private var subscribed = AtomicInteger(0)
-    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaStreamActor(it, state, nextState, nextEnv) }
+    override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaStreamActor(it, state, nextState) }
 
-    fun createNewSubscriber(context: ActorContext<Message>): SourceRef<PassState<C, State, Env>> {
-        return (subscriptions.runWith(StreamRefs.sourceRef(), context.system) as SourceRef<PassState<C, State, Env>>)
+    fun createNewSubscriber(context: ActorContext<Message>): SourceRef<PassState<C, State>> {
+        return (subscriptions.runWith(StreamRefs.sourceRef(), context.system) as SourceRef<PassState<C, State>>)
     }
 
     private inner class AkkaStreamActor(
         context: ActorContext<Message>,
         private var state: C,
-        private val nextState: (State, Env) -> State,
-        private val nextEnv: (State, Env) -> Env,
+        private val nextState: (State, List<C>) -> State,
     ): AbstractBehavior<Message>(context) {
         private var timestamp = 0L
         private var iterations = AtomicInteger(0)
@@ -55,11 +52,11 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
 
         init {
             val sink = BroadcastHub.of(PassState::class.java, 8)
-            val source = Source.queue<PassState<*, *, *>>(8, OverflowStrategy.dropTail())
+            val source = Source.queue<PassState<*, *>>(8, OverflowStrategy.dropTail())
             val (queue, subscriptions) = source.toMat(sink, Keep.both()).run(context.system).let { it.first() to it.second() }
 
-            this@StreamActor.queue = queue as SourceQueue<PassState<C, State, Env>>
-            this@StreamActor.subscriptions = subscriptions as Source<PassState<C, State, Env>, NotUsed>
+            this@StreamActor.queue = queue as SourceQueue<PassState<C, State>>
+            this@StreamActor.subscriptions = subscriptions as Source<PassState<C, State>, NotUsed>
 
             (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized(this@StreamActor))
         }
@@ -69,14 +66,14 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
             return newReceiveBuilder()
                 .onMessage(AddNeighbour::class.java, ::onAddNeighbourMessage)
                 .onMessage(Iterate::class.java, ::onIterateMessage)
-                .onMessage(PassState::class.java) { onPassStateMessage(it as PassState<C, State, Env>) }
+                .onMessage(PassState::class.java) { onPassStateMessage(it as PassState<C, State>) }
                 .build()
         }
 
         @Suppress("UNCHECKED_CAST")
         private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<Message> {
             neighboursCount++
-            (msg.cellActor as StreamActor<C, State, Env>).createNewSubscriber(context).source
+            (msg.cellActor as StreamActor<C, State>).createNewSubscriber(context).source
                 .runForeach({
                     if (it.timestamp == -1L) {
                         // notify producer that new subscriber arrived
@@ -102,7 +99,7 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
             state.addNeighboursState(neighbour)
 
             if (state.isReadyForIteration(neighboursCount)) {
-                state = state.iterate(nextState, nextEnv)
+                state = state.iterate(nextState)
 
                 if (iterations.decrementAndGet() > 0) {
                     forceIteration()
@@ -130,7 +127,7 @@ class StreamActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentSt
             return this
         }
 
-        private fun onPassStateMessage(msg: PassState<C, State, Env>): Behavior<Message> {
+        private fun onPassStateMessage(msg: PassState<C, State>): Behavior<Message> {
             if (msg.timestamp == -1L) {
                 // this is first message, it is used to ensure that all neighbours are subscribed
                 // in other case they can miss a message

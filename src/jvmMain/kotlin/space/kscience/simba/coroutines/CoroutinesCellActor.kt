@@ -6,17 +6,15 @@ import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
-class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: EnvironmentState>(
+class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
     override val engine: Engine,
     override val coroutineContext: CoroutineContext,
     private var state: C,
-    private val nextState: (State, Env) -> State,
-    private val nextEnv: (State, Env) -> Env,
+    private val nextState: (State, List<C>) -> State,
 ) : Actor, CoroutineScope {
     private val actor = actor<Message> {
         var timestamp = 0L
@@ -43,7 +41,7 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
             forceIteration()
         }
 
-        fun onPassStateMessage(msg: PassState<C, State, Env>) {
+        fun onPassStateMessage(msg: PassState<C, State>) {
             if (msg.timestamp != timestamp) {
                 earlyStates
                     .getOrPut(msg.timestamp) { mutableListOf() }
@@ -53,7 +51,7 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
 
             internalState.addNeighboursState(msg.state)
             if (internalState.isReadyForIteration(neighbours.size)) {
-                internalState = internalState.iterate(nextState, nextEnv)
+                internalState = internalState.iterate(nextState)
 
                 iterations--
                 if (iterations > 0) {
@@ -67,7 +65,7 @@ class CoroutinesCellActor<C: Cell<C, State, Env>, State: ObjectState, Env: Envir
             when (msg) {
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState<*, *, *> -> onPassStateMessage(msg as PassState<C, State, Env>)
+                is PassState<*, *> -> onPassStateMessage(msg as PassState<C, State>)
             }
         }
     }

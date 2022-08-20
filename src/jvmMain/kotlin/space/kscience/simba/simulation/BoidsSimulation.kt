@@ -22,7 +22,7 @@ private object BoidsSettings {
     const val cohesionWeight = 1.0
 }
 
-class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState, ActorBoidsEnvironmentState>("boids") {
+class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState>("boids") {
     private val random = Random(0)
     private val n = 100
     private val bound = 1000.0
@@ -31,7 +31,7 @@ class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState, ActorBoidsEnv
     private var withAllRules = false
 
     override val engine: Engine = AkkaActorEngine(intArrayOf(n), neighbours, { ActorBoidsCell(it[0], random.randomBoidsState()) }, ::nextStep)
-    override val printSystem: PrintSystem<ActorBoidsCell, ActorBoidsState, ActorBoidsEnvironmentState> = PrintSystem(n)
+    override val printSystem: PrintSystem<ActorBoidsCell, ActorBoidsState> = PrintSystem(n)
 
     init {
         engine.addNewSystem(printSystem)
@@ -55,12 +55,12 @@ class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState, ActorBoidsEnv
 
     // original document http://www.cs.toronto.edu/~dt/siggraph97-course/cwr87/
     // C# implementation https://github.com/SebLague/Boids
-    private fun nextStep(old: ActorBoidsState, env: ActorBoidsEnvironmentState): ActorBoidsState {
+    private fun nextStep(old: ActorBoidsState, neighbours: List<ActorBoidsCell>): ActorBoidsState {
         val deltaTime = 1.0 / 60
         val visibleNeighbours =
-            env.field.filter { (it.state.position - old.position).length() <= BoidsSettings.perceptionRadius }
+            neighbours.filter { (it.state.position - old.position).length() <= BoidsSettings.perceptionRadius }
         val avoidNeighbours =
-            env.field.filter { (it.state.position - old.position).length() <= BoidsSettings.avoidanceRadius }
+            neighbours.filter { (it.state.position - old.position).length() <= BoidsSettings.avoidanceRadius }
 
         fun applyFirstRule(boid: ActorBoidsState): Vector2 {
             val avgAvoidanceHeading = avoidNeighbours

@@ -6,14 +6,14 @@ import space.kscience.simba.state.*
 import space.kscience.simba.systems.PrintSystem
 import kotlin.random.Random
 
-class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv>("gameOfLife") {
+class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState>("gameOfLife") {
     private val random = Random(0)
     private val n = 100
     private val m = 100
 
     override val engine: Engine = getEngine(n, m, random)
 
-    override val printSystem: PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState, ActorGameOfLifeEnv> = PrintSystem(n * m)
+    override val printSystem: PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState> = PrintSystem(n * m)
 
     init {
         engine.addNewSystem(printSystem)
