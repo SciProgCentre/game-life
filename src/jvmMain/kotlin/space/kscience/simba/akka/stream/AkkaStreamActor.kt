@@ -10,6 +10,10 @@ import akka.actor.typed.javadsl.Receive
 import akka.stream.OverflowStrategy
 import akka.stream.SourceRef
 import akka.stream.javadsl.*
+import io.ktor.util.collections.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import space.kscience.simba.akka.ActorInitialized
 import space.kscience.simba.akka.AkkaActor
 import space.kscience.simba.akka.MainActorMessage
@@ -18,19 +22,22 @@ import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.CoroutineContext
 
 // TODO fix memory leak in case when field is big (100 x 100)
 // TODO get rid of synchronized blocks
 class StreamActor<C: Cell<C, State>, State: ObjectState>(
     override val engine: Engine,
     state: C,
-    nextState: (State, List<C>) -> State,
-): AkkaActor() {
+    nextState: suspend (State, List<C>) -> State,
+): AkkaActor(), CoroutineScope {
     private lateinit var queue: SourceQueue<PassState<C, State>>
     private lateinit var subscriptions: Source<PassState<C, State>, NotUsed>
 
     private var subscribed = AtomicInteger(0)
     override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaStreamActor(it, state, nextState) }
+
+    override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
 
     fun createNewSubscriber(context: ActorContext<Message>): SourceRef<PassState<C, State>> {
         return (subscriptions.runWith(StreamRefs.sourceRef(), context.system) as SourceRef<PassState<C, State>>)
@@ -39,7 +46,7 @@ class StreamActor<C: Cell<C, State>, State: ObjectState>(
     private inner class AkkaStreamActor(
         context: ActorContext<Message>,
         private var state: C,
-        private val nextState: (State, List<C>) -> State,
+        private val nextState: suspend (State, List<C>) -> State,
     ): AbstractBehavior<Message>(context) {
         private var timestamp = 0L
         private var iterations = AtomicInteger(0)
@@ -73,25 +80,24 @@ class StreamActor<C: Cell<C, State>, State: ObjectState>(
         @Suppress("UNCHECKED_CAST")
         private fun onAddNeighbourMessage(msg: AddNeighbour): Behavior<Message> {
             neighboursCount++
-            (msg.cellActor as StreamActor<C, State>).createNewSubscriber(context).source
-                .runForeach({
-                    if (it.timestamp == -1L) {
-                        // notify producer that new subscriber arrived
-                        if (wasSubscribed[it.state] != true) msg.cellActor.subscribed.incrementAndGet()
-                        wasSubscribed[it.state] = true
-                        return@runForeach
-                    }
+            (msg.cellActor as StreamActor<C, State>).createNewSubscriber(context).source.runForeach({
+                if (it.timestamp == -1L) {
+                    // notify producer that new subscriber arrived
+                    if (wasSubscribed[it.state] != true) msg.cellActor.subscribed.incrementAndGet()
+                    wasSubscribed[it.state] = true
+                    return@runForeach
+                }
 
-                    synchronized(lock) {
-                        if (it.timestamp != timestamp) {
-                            earlyStates
-                                .getOrPut(it.timestamp) { mutableListOf() }
-                                .add(it.state)
-                        } else {
-                            addStateAndTryToIterate(it.state)
-                        }
+                synchronized(lock) {
+                    if (it.timestamp != timestamp) {
+                        earlyStates
+                            .getOrPut(it.timestamp) { mutableListOf() }
+                            .add(it.state)
+                    } else {
+                        addStateAndTryToIterate(it.state)
                     }
-                }, context.system)
+                }
+            }, context.system)
             return this
         }
 
@@ -99,10 +105,12 @@ class StreamActor<C: Cell<C, State>, State: ObjectState>(
             state.addNeighboursState(neighbour)
 
             if (state.isReadyForIteration(neighboursCount)) {
-                state = state.iterate(nextState)
+                launch {
+                    state = state.iterate(nextState)
 
-                if (iterations.decrementAndGet() > 0) {
-                    forceIteration()
+                    if (iterations.decrementAndGet() > 0) {
+                        forceIteration()
+                    }
                 }
             }
         }

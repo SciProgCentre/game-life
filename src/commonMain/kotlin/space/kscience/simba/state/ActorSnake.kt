@@ -15,8 +15,8 @@ data class ActorSnakeCell(
 ) : Cell<ActorSnakeCell, ActorSnakeState>() {
     override val vectorId: Vector = intArrayOf(id)
 
-    override fun iterate(
-        convertState: (ActorSnakeState, List<ActorSnakeCell>) -> ActorSnakeState,
+    override suspend fun iterate(
+        convertState: suspend (ActorSnakeState, List<ActorSnakeCell>) -> ActorSnakeState,
     ): ActorSnakeCell {
         return ActorSnakeCell(id, convertState(state, neighbours))
     }

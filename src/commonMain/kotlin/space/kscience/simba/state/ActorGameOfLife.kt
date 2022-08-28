@@ -18,8 +18,8 @@ data class ActorGameOfLifeCell(
 ) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState>() {
     override val vectorId: Vector = intArrayOf(i, j)
 
-    override fun iterate(
-        convertState: (ActorGameOfLifeState, List<ActorGameOfLifeCell>) -> ActorGameOfLifeState
+    override suspend fun iterate(
+        convertState: suspend (ActorGameOfLifeState, List<ActorGameOfLifeCell>) -> ActorGameOfLifeState
     ): ActorGameOfLifeCell {
         return ActorGameOfLifeCell(i, j, convertState(state, neighbours))
     }

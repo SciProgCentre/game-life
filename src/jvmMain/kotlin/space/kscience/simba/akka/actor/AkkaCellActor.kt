@@ -6,24 +6,30 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import space.kscience.simba.akka.ActorInitialized
 import space.kscience.simba.akka.AkkaActor
 import space.kscience.simba.akka.MainActorMessage
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
+import kotlin.coroutines.CoroutineContext
 
 class CellActor<C: Cell<C, State>, State: ObjectState>(
     override val engine: Engine,
     state: C,
-    nextState: (State, List<C>) -> State,
-) : AkkaActor() {
+    nextState: suspend (State, List<C>) -> State,
+) : AkkaActor(), CoroutineScope {
     override val akkaActor: Behavior<Message> = Behaviors.setup { AkkaCellActor(it, state, nextState) }
+
+    override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
 
     private inner class AkkaCellActor<C : Cell<C, State>, State : ObjectState>(
         context: ActorContext<Message>,
         private var state: C,
-        private val nextState: (State, List<C>) -> State,
+        private val nextState: suspend (State, List<C>) -> State,
     ) : AbstractBehavior<Message>(context) {
         private var timestamp = 0L
         private var iterations = 0
@@ -57,7 +63,7 @@ class CellActor<C: Cell<C, State>, State: ObjectState>(
             timestamp++
             neighbours.forEach { it.handleAndCallSystems(PassState(state, timestamp)) }
             earlyStates.remove(timestamp)?.forEach {
-                context.self.tell(PassState(it, timestamp))
+                onPassStateMessage(PassState(it, timestamp))
             }
             return this
         }
@@ -72,10 +78,12 @@ class CellActor<C: Cell<C, State>, State: ObjectState>(
 
             state.addNeighboursState(msg.state)
             if (state.isReadyForIteration(neighbours.size)) {
-                state = state.iterate(nextState)
+                launch {
+                    state = state.iterate(nextState)
 
-                if (--iterations > 0) {
-                    forceIteration()
+                    if (--iterations > 0) {
+                        forceIteration()
+                    }
                 }
             }
             return this

@@ -10,8 +10,8 @@ data class ActorMitosisCell(
     override val vectorId: Vector,
     override val state: ActorMitosisState,
 ) : Cell<ActorMitosisCell, ActorMitosisState>() {
-    override fun iterate(
-        convertState: (ActorMitosisState, List<ActorMitosisCell>) -> ActorMitosisState
+    override suspend fun iterate(
+        convertState: suspend (ActorMitosisState, List<ActorMitosisCell>) -> ActorMitosisState
     ): ActorMitosisCell {
         return ActorMitosisCell(vectorId, convertState(state, neighbours))
     }

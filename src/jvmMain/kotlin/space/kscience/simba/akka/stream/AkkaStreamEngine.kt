@@ -10,7 +10,7 @@ class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
-    private val nextState: (State, List<C>) -> State,
+    private val nextState: suspend (State, List<C>) -> State,
 ) : AkkaEngine() {
     override fun init() {
         actorSystem.tell(SpawnCells(dimensions, neighborsIndices) { index ->

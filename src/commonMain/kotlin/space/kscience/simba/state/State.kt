@@ -12,7 +12,7 @@ abstract class Cell<Self : Cell<Self, State>, State : ObjectState> : Comparable<
 
     open fun isReadyForIteration(expectedCount: Int): Boolean = neighbours.size == expectedCount
     open fun addNeighboursState(cell: Self) { neighbours += cell }
-    abstract fun iterate(convertState: (State, List<Self>) -> State): Self
+    abstract suspend fun iterate(convertState: suspend (State, List<Self>) -> State): Self
 
     override fun compareTo(other: Self): Int {
         return vectorId.compareTo(other.vectorId)

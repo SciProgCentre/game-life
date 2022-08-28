@@ -14,7 +14,7 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
     override val engine: Engine,
     override val coroutineContext: CoroutineContext,
     private var state: C,
-    private val nextState: (State, List<C>) -> State,
+    private val nextState: suspend (State, List<C>) -> State,
 ) : Actor, CoroutineScope {
     private val actor = actor<Message> {
         var timestamp = 0L
@@ -51,11 +51,13 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
 
             internalState.addNeighboursState(msg.state)
             if (internalState.isReadyForIteration(neighbours.size)) {
-                internalState = internalState.iterate(nextState)
+                launch {
+                    internalState = internalState.iterate(nextState)
 
-                iterations--
-                if (iterations > 0) {
-                    forceIteration()
+                    iterations--
+                    if (iterations > 0) {
+                        forceIteration()
+                    }
                 }
             }
         }
