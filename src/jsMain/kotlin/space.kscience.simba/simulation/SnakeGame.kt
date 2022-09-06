@@ -72,7 +72,6 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
 
         snake.play(cell.state, 100, ::nextDirection) { _, oldState, _ -> history += oldState }
 
-        console.log(history)
         history.forEach { (bodyWithHead, baitPosition) ->
             drawCurrentGameState(bodyWithHead, baitPosition)
             delay(100)

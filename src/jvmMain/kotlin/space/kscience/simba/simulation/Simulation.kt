@@ -13,12 +13,13 @@ abstract class Simulation<C: Cell<C, State>, State: ObjectState>(private val nam
     protected abstract val printSystem: PrintSystem<C, State>
 
     protected open fun Routing.addAdditionalRouting() {}
+    protected open fun Set<Any>.transformData(): Set<Any> = this
 
     fun Routing.setUp() {
         get("/status/$name/{iteration}") {
             val iteration = call.parameters["iteration"]?.toLong() ?: error("Invalid status request")
             if (!printSystem.isCompleteFor(iteration)) engine.iterate()
-            call.respond(printSystem.render(iteration) as Set<Any>)
+            call.respond((printSystem.render(iteration) as Set<Any>).transformData())
         }
 
         addAdditionalRouting()

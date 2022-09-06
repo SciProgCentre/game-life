@@ -6,7 +6,7 @@ import space.kscience.simba.utils.Vector2
 import kotlin.random.Random
 
 @kotlinx.serialization.Serializable
-data class ActorSnakeState(val table: QTable<SnakeState, SnakeAction>) : ObjectState
+data class ActorSnakeState(val table: QTable<SnakeState, SnakeAction>, val iteration: Long) : ObjectState
 
 @kotlinx.serialization.Serializable
 data class ActorSnakeCell(
@@ -86,7 +86,6 @@ interface Action
 @kotlinx.serialization.Serializable
 class QTable<S: State, A: Action>(private val learningRate: Double = 0.1, private val discountFactor: Double = 0.5) {
     private val qTable = mutableMapOf<S, MutableMap<A, Double>>()
-//    private val dataInOrder = mutableListOf<Triple<S, A, Double>>()
 
     fun getBestActionForGivenState(state: S): A? {
         return qTable[state]?.maxByOrNull { it.value }?.key
@@ -99,15 +98,9 @@ class QTable<S: State, A: Action>(private val learningRate: Double = 0.1, privat
 
         val newValue = (1 - learningRate) * oldValue + learningRate * (reward + discountFactor * bestValueForNextState)
         qTable[currentState]?.set(action, newValue)
-
-//        dataInOrder += Triple(currentState, action, reward)
     }
 
     fun combine(other: QTable<S, A>) {
-//        for (i in 0 until other.dataInOrder.size - 1) {
-//            val (currentState, action, reward) = other.dataInOrder[i]
-//            update(currentState, other.dataInOrder[i + 1].first, action, reward)
-//        }
         other.qTable.forEach { (key, value) ->
             if (!qTable.containsKey(key)) {
                 qTable[key] = value
@@ -126,7 +119,6 @@ class QTable<S: State, A: Action>(private val learningRate: Double = 0.1, privat
     fun deepCopy(): QTable<S, A> {
         return QTable<S, A>(learningRate, discountFactor).apply {  ->
             this@QTable.qTable.forEach { (key, value) -> this.qTable[key] = value.toMutableMap() }
-//            this.dataInOrder.addAll(this@QTable.dataInOrder)
         }
     }
 }
