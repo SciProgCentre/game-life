@@ -9,12 +9,11 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import space.kscience.simba.simulation.BoidsSimulation
-import space.kscience.simba.simulation.GameOfLifeSimulation
-import space.kscience.simba.simulation.MitosisSimulation
-import space.kscience.simba.simulation.SnakeLearningSimulation
+import space.kscience.simba.simulation.*
 
-private val simulations = listOf(GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation())
+private val simulations = listOf(
+    GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation(), SnakeLearningWithManagerSimulation()
+)
 
 fun main() {
     embeddedServer(Netty, 9090) {

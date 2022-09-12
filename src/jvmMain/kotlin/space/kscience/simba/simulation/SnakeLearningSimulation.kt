@@ -42,7 +42,6 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snak
         return setOf(this.last())
     }
 
-    // TODO maybe create new separate actor "TableManager" which is responsible to combine tables
     private suspend fun nextState(state: ActorSnakeState, neighbours: List<ActorSnakeCell>): ActorSnakeState {
         val combinedState = combineSystem.getCombinedDataFor(state.iteration + 1)
 
@@ -52,25 +51,25 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snak
 
         return combinedState
     }
+}
 
-    private fun Snake.calculateReward(oldState: SnakeState): Double {
-        val headPosition = getHeadPosition()
-        val baitPosition = getBaitPosition() ?: return 1.0 // best score
+internal fun Snake.calculateReward(oldState: SnakeState): Double {
+    val headPosition = getHeadPosition()
+    val baitPosition = getBaitPosition() ?: return 1.0 // best score
 
-        if (!headPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
-        if (!baitPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
+    if (!headPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
+    if (!baitPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
 
-        fun getDistanceToBait(head: Vector2): Double {
-            val x = (baitPosition.first - head.first)
-            val y = (baitPosition.second - head.second)
-            return ((x / width).pow(2) + (y / height).pow(2))
-        }
-
-        val currentDistance = getDistanceToBait(headPosition)
-        val oldDistance = getDistanceToBait(oldState.body.last())
-
-        return if (currentDistance < oldDistance) return 1.0 else -1.0
+    fun getDistanceToBait(head: Vector2): Double {
+        val x = (baitPosition.first - head.first)
+        val y = (baitPosition.second - head.second)
+        return ((x / width).pow(2) + (y / height).pow(2))
     }
+
+    val currentDistance = getDistanceToBait(headPosition)
+    val oldDistance = getDistanceToBait(oldState.body.last())
+
+    return if (currentDistance < oldDistance) return 1.0 else -1.0
 }
 
 private class CombineSystem(private val fieldSize: Int): AbstractCollector<ActorSnakeCell, ActorSnakeState>() {

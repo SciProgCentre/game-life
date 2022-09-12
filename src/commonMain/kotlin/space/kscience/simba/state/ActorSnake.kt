@@ -22,6 +22,28 @@ data class ActorSnakeCell(
     }
 }
 
+@kotlinx.serialization.Serializable
+data class ActorSnakeCellWithSingleManager(
+    val id: Int,
+    override val state: ActorSnakeState,
+) : Cell<ActorSnakeCellWithSingleManager, ActorSnakeState>() {
+    override val vectorId: Vector = intArrayOf(id)
+
+    override fun isReadyForIteration(expectedCount: Int): Boolean {
+        return if (id == 0) {
+            super.isReadyForIteration(expectedCount)
+        } else {
+            neighbours.any { it.id == 0 }
+        }
+    }
+
+    override suspend fun iterate(
+        convertState: suspend (ActorSnakeState, List<ActorSnakeCellWithSingleManager>) -> ActorSnakeState,
+    ): ActorSnakeCellWithSingleManager {
+        return ActorSnakeCellWithSingleManager(id, convertState(state, neighbours))
+    }
+}
+
 fun Snake.play(
     state: ActorSnakeState,
     maxIterations: Int,
