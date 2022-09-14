@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
 
 plugins {
-    kotlin("multiplatform") version "1.6.10"
+    kotlin("multiplatform") version "1.7.10"
     application
-    kotlin("plugin.serialization") version "1.6.10"
+    kotlin("plugin.serialization") version "1.7.10"
 }
 
 val akkaVersion = "2.6.19"
@@ -30,7 +30,7 @@ kotlin {
         withJava()
     }
 
-    js {
+    js(IR) {
         browser {
             binaries.executable()
         }
