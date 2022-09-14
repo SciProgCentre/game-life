@@ -11,11 +11,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.dom.clear
 import kotlinx.html.button
+import kotlinx.html.div
 import kotlinx.html.dom.append
 import kotlinx.html.id
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
+import space.kscience.plotly.*
+import space.kscience.plotly.models.ScatterMode
+import space.kscience.plotly.models.Trace
+import space.kscience.plotly.models.TraceType
 import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
 import space.kscience.simba.state.*
 import space.kscience.simba.utils.Vector2
@@ -25,6 +30,7 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
     override val name: String = "Snake"
 
     private lateinit var context: CanvasRenderingContext2D
+    private val learningTrace: Trace = Trace()
     private val endpoint = window.location.origin
     private val jsonClient = HttpClient {
         install(JsonFeature) {
@@ -35,6 +41,7 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
     private val seed = 0
     private val random = Random(seed)
     private val snake = Snake(width, height, seed)
+    private val eatenBaitByIteration = mutableListOf<Int>()
     private var iteration = 1L
 
     override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
@@ -54,13 +61,29 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
         context.canvas.width = width * cellSize
         context.canvas.height = height * cellSize
         context.strokeRect(0.0, 0.0, context.canvas.width.toDouble(), context.canvas.height.toDouble())
-        document.body!!.appendChild(canvas)
+        document.body?.appendChild(canvas)
+
+        document.body?.append {
+            val learningCurve = Plot()
+            learningCurve.scatter {
+                mode = ScatterMode.lines
+                type = TraceType.scatter
+            }
+            learningCurve.layout {
+                title = "Snake learning curve"
+                xaxis.title = "Number of iteration"
+                yaxis.title = "The amount of eaten food"
+            }
+            learningCurve.addTrace(learningTrace)
+            this.div {  }.plot(learningCurve)
+        }
     }
 
     private suspend fun getSnakeCell(iteration: Long): List<ActorSnakeCell> {
         return jsonClient.get("$endpoint/status/${name.lowercase()}/$iteration")
     }
 
+    // TODO simplify game; just one iteration (generate food once)
     override suspend fun render(iteration: Long) {
         val history = mutableListOf<SnakeState>()
         snake.restart()
@@ -70,12 +93,19 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
             return qTable.getNextDirection(currentState, random.getRandomSnakeDirection(oldDirection), oldDirection, true)
         }
 
-        snake.play(cell.state, 100, ::nextDirection) { _, oldState, _ -> history += oldState }
+        eatenBaitByIteration.add(0)
+        snake.play(cell.state, 100, ::nextDirection) { game, oldState, _ ->
+            history += oldState
+            if (game.ateBait()) eatenBaitByIteration[eatenBaitByIteration.lastIndex]++
+        }
 
         history.forEach { (bodyWithHead, baitPosition) ->
             drawCurrentGameState(bodyWithHead, baitPosition)
             delay(100)
         }
+
+        learningTrace.x.numbers = eatenBaitByIteration.indices
+        learningTrace.y.numbers = eatenBaitByIteration
 
         render(iteration + 1)
     }

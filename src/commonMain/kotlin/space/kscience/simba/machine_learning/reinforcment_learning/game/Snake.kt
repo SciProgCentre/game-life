@@ -67,6 +67,8 @@ class Snake(val width: Int, val height: Int, seed: Int = 0) {
         generateNewBait()
     }
 
+    fun ateBait(): Boolean = ateBaitLastMove
+
     private fun generateNewBait() {
         do {
             baitPosition = randomVectorWithinBounds()

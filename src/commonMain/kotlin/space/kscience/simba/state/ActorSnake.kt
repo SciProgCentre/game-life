@@ -86,7 +86,7 @@ fun Snake.train(
 fun Random.getRandomSnakeDirection(lastDirection: Snake.Direction?): Snake.Direction {
     var randomDirection: Snake.Direction
     do {
-        randomDirection = Snake.Direction.values()[this.nextInt(0, 3)]
+        randomDirection = Snake.Direction.values()[this.nextInt(0, 4)]
     } while (randomDirection == lastDirection?.getOpposite())
     return randomDirection
 }
