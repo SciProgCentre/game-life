@@ -1,8 +1,10 @@
 package space.kscience.simba.simulation
 
-import space.kscience.simba.akka.actor.AkkaActorEngine
+import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
-import space.kscience.simba.state.*
+import space.kscience.simba.state.ActorMitosisCell
+import space.kscience.simba.state.ActorMitosisState
+import space.kscience.simba.state.gameOfLifeNeighbours
 import space.kscience.simba.systems.PrintSystem
 import space.kscience.simba.utils.Vector
 import kotlin.math.pow
@@ -20,7 +22,9 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState>("mitosi
         -0.939, 0.88, -0.939
     )
 
-    override val engine: Engine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell, ::nextStep)
+    override val engine: Engine = EngineFactory.createEngine(
+        intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell, ::nextStep
+    )
 
     override val printSystem: PrintSystem<ActorMitosisCell, ActorMitosisState> = PrintSystem(n * m)
 

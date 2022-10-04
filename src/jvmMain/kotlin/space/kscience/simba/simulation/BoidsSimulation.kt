@@ -2,9 +2,10 @@ package space.kscience.simba.simulation
 
 import io.ktor.application.*
 import io.ktor.routing.*
-import space.kscience.simba.akka.actor.AkkaActorEngine
+import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
-import space.kscience.simba.state.*
+import space.kscience.simba.state.ActorBoidsCell
+import space.kscience.simba.state.ActorBoidsState
 import space.kscience.simba.systems.PrintSystem
 import space.kscience.simba.utils.*
 import kotlin.random.Random
@@ -30,7 +31,9 @@ class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState>("boids") {
     private val neighbours = (1 until n).map { intArrayOf(it) }.toSet()
     private var withAllRules = false
 
-    override val engine: Engine = AkkaActorEngine(intArrayOf(n), neighbours, { ActorBoidsCell(it[0], random.randomBoidsState()) }, ::nextStep)
+    override val engine: Engine = EngineFactory.createEngine(
+        intArrayOf(n), neighbours, { ActorBoidsCell(it[0], random.randomBoidsState()) }, ::nextStep
+    )
     override val printSystem: PrintSystem<ActorBoidsCell, ActorBoidsState> = PrintSystem(n)
 
     init {

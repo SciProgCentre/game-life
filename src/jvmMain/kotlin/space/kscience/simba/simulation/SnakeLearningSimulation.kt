@@ -1,6 +1,6 @@
 package space.kscience.simba.simulation
 
-import space.kscience.simba.akka.actor.AkkaActorEngine
+import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
 import space.kscience.simba.state.*
@@ -30,7 +30,7 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snak
     }
 
     private fun createEngine(): Engine {
-        return AkkaActorEngine(
+        return EngineFactory.createEngine(
             intArrayOf(actorsCount),
             (1 until actorsCount).map { intArrayOf(it) }.toSet(),
             { (id) -> ActorSnakeCell(id, ActorSnakeState(QTable(), 0)) },
