@@ -13,8 +13,8 @@ class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
     private val nextState: suspend (State, List<C>) -> State,
 ) : AkkaEngine() {
     override fun init() {
-        actorSystem.tell(SpawnCells(dimensions, neighborsIndices) { index ->
-            CellActor(this, init(index), nextState)
+        actorSystem.tell(SpawnCells(dimensions, neighborsIndices) { parent, index ->
+            CellActor(parent).let { it to it.create(init(index), nextState) }
         })
     }
 }

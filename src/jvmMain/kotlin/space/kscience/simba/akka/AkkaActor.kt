@@ -4,12 +4,11 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import space.kscience.simba.engine.Actor
 import space.kscience.simba.engine.Message
+import space.kscience.simba.state.Cell
+import space.kscience.simba.state.ObjectState
 
 abstract class AkkaActor : Actor {
-    abstract val akkaActor: Behavior<Message>
     lateinit var akkaActorRef: ActorRef<Message>
 
-    override fun handle(msg: Message) {
-        akkaActorRef.tell(msg)
-    }
+    abstract fun <C: Cell<C, State>, State: ObjectState> create(state: C, nextState: suspend (State, List<C>) -> State): Behavior<Message>
 }

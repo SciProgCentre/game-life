@@ -1,5 +1,6 @@
 package space.kscience.simba.akka
 
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
@@ -15,16 +16,17 @@ sealed class MainActorMessage
 class SpawnCells(
     val dimensions: Vector,
     val neighborsIndices: Set<Vector>,
-    val spawnCell: (Vector) -> AkkaActor
+    val spawnCell: (ActorRef<MainActorMessage>, Vector) -> Pair<AkkaActor, Behavior<Message>>
 ): MainActorMessage()
 class ActorInitialized(val actorRef: Actor): MainActorMessage()
 object SyncIterate: MainActorMessage()
+class ActorMessageForward(val content: Message): MainActorMessage()
 
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>,
     private val engine: AkkaEngine
 ): AbstractBehavior<MainActorMessage>(context) {
-    lateinit var field: List<Actor>
+    lateinit var field: List<AkkaActor>
     lateinit var neighborsIndices: Set<Vector>
     lateinit var dimensions: Vector
 
@@ -35,6 +37,7 @@ class MainActor private constructor(
             .onMessage(SpawnCells::class.java, ::onSpawnCells)
             .onMessage(SyncIterate::class.java, ::onSyncIterate)
             .onMessage(ActorInitialized::class.java, ::onActorInitialized)
+            .onMessage(ActorMessageForward::class.java, ::onActorMessageForward)
             .build()
     }
 
@@ -55,8 +58,8 @@ class MainActor private constructor(
         dimensions = msg.dimensions
 
         field = (0 until msg.dimensions.product()).map { index ->
-            val actor = msg.spawnCell(index.toVector(msg.dimensions))
-            actor.akkaActorRef = context.spawn(actor.akkaActor, "Actor_${index}")
+            val (actor, behaviour) = msg.spawnCell(context.self, index.toVector(msg.dimensions))
+            actor.akkaActorRef = context.spawn(behaviour, "Actor_${index}")
             actor
         }
 
@@ -64,7 +67,7 @@ class MainActor private constructor(
     }
 
     private fun onSyncIterate(msg: SyncIterate): MainActor {
-        field.forEach { it.handleAndCallSystems(Iterate()) }
+        field.forEach { it.handle(Iterate()) }
         return this
     }
 
@@ -74,10 +77,15 @@ class MainActor private constructor(
                 field.forEachIndexed { index, actorRef ->
                     getNeighboursIds(index.toVector(dimensions))
                         .map { v -> field[v.toIndex(dimensions)] }
-                        .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
+                        .forEach { neighbour -> actorRef.handle(AddNeighbour(neighbour)) }
                 }
             }
         }
+        return this
+    }
+
+    private fun onActorMessageForward(msg: ActorMessageForward): MainActor {
+        engine.processWithSystems(msg.content)
         return this
     }
 
