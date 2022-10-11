@@ -86,7 +86,7 @@ class EngineTest {
         val random1 = Random(0)
         val random2 = Random(0)
 
-        // we are using small field, but more iterations here because of problems with memory in streams
+        // we are using small field here because of problems with memory in streams
         val bigN = 10
         val bigM = 10
 
@@ -127,6 +127,7 @@ class EngineTest {
         }
     }
 
+    @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectness(simulationEngine: Engine) {
         val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(n * m)
         simulationEngine.addNewSystem(printSystem)
@@ -151,6 +152,7 @@ class EngineTest {
         }
     }
 
+    @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine) {
         val printSystem = PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState>(n * m)
         simulationEngine.addNewSystem(printSystem)

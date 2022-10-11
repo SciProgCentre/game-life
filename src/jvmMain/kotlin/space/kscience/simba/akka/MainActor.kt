@@ -24,7 +24,7 @@ class ActorMessageForward(val content: Message): MainActorMessage()
 
 class MainActor private constructor(
     context: ActorContext<MainActorMessage>,
-    private val engine: AkkaEngine
+    private val engine: AkkaEngine<MainActorMessage>
 ): AbstractBehavior<MainActorMessage>(context) {
     lateinit var field: List<AkkaActor>
     lateinit var neighborsIndices: Set<Vector>
@@ -90,7 +90,7 @@ class MainActor private constructor(
     }
 
     companion object {
-        fun create(engine: AkkaEngine): Behavior<MainActorMessage> {
+        fun create(engine: AkkaEngine<MainActorMessage>): Behavior<MainActorMessage> {
             return Behaviors.setup { MainActor(it, engine) }
         }
     }

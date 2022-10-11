@@ -48,11 +48,15 @@ class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState>(
         field.forEachIndexed { index, actorRef ->
             getNeighboursIds(index.toVector(dimensions))
                 .map { v -> field[v.toIndex(dimensions)] }
-                .forEach { neighbour -> actorRef.handleAndCallSystems(AddNeighbour(neighbour)) }
+                .forEach { neighbour -> actorRef.handle(AddNeighbour(neighbour)) }
         }
     }
 
     override fun iterate() {
-        field.forEach { it.handleAndCallSystems(Iterate()) }
+        field.forEach { it.handle(Iterate()) }
+    }
+
+    internal fun processActorMessage(msg: Message) {
+        processWithSystems(msg)
     }
 }

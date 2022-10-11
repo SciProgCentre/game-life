@@ -11,7 +11,8 @@ import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
 class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
-    override val engine: Engine,
+    // actors in coroutines can't run on different machines, so it is safe to use ref to engine here
+    private val engine: CoroutinesActorEngine<C, State>,
     override val coroutineContext: CoroutineContext,
     private var state: C,
     private val nextState: suspend (State, List<C>) -> State,
@@ -30,9 +31,9 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
 
         fun forceIteration() {
             timestamp++
-            neighbours.forEach { it.handleAndCallSystems(PassState(internalState, timestamp)) }
+            neighbours.forEach { it.handle(PassState(internalState, timestamp)) }
             earlyStates.remove(timestamp)?.forEach {
-                this@CoroutinesCellActor.handle(PassState(it, timestamp))
+                this@CoroutinesCellActor.handleWithoutResendingToEngine(PassState(it, timestamp))
             }
         }
 
@@ -72,7 +73,11 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         }
     }
 
-    override fun handle(msg: Message) {
+    override fun handleWithoutResendingToEngine(msg: Message) {
         launch { actor.send(msg) }
+    }
+
+    override fun sendToEngine(msg: Message) {
+        engine.processActorMessage(msg)
     }
 }
