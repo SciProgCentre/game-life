@@ -57,9 +57,7 @@ private class AkkaCellActor<C : Cell<C, State>, State : ObjectState>(
     private val earlyStates = linkedMapOf<Long, MutableList<C>>()
 
     init {
-//        this@CellActor.parentRef = context.system as ActorSystem<MainActorMessage>
         (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized(actor))
-//        this@CellActor.akkaActorRef = context.self
     }
 
     @Suppress("UNCHECKED_CAST")

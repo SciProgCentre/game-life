@@ -15,7 +15,13 @@ private val simulations = listOf(
     GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation(), SnakeLearningWithManagerSimulation()
 )
 
-fun main() {
+fun main(args: Array<String>) {
+    if (args.contains("-server")) {
+        launchServer()
+    }
+}
+
+fun launchServer() {
     embeddedServer(Netty, 9090) {
         install(ContentNegotiation) {
             json()

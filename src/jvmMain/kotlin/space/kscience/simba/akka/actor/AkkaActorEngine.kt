@@ -1,6 +1,8 @@
 package space.kscience.simba.akka.actor
 
 import akka.actor.typed.ActorSystem
+import akka.management.cluster.bootstrap.ClusterBootstrap
+import akka.management.javadsl.AkkaManagement
 import space.kscience.simba.akka.*
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
@@ -17,9 +19,15 @@ class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
     }
 
     override fun init() {
+        configCluster()
         actorSystem.tell(SpawnCells(dimensions, neighborsIndices) { parent, index ->
             CellActor(parent).let { it to it.create(init(index), nextState) }
         })
+    }
+
+    private fun configCluster() {
+        AkkaManagement.get(actorSystem).start()
+        ClusterBootstrap.get(actorSystem).start()
     }
 
     override fun onIterate() {
