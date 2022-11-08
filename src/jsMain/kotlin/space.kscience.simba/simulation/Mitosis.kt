@@ -16,7 +16,10 @@ import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
-import space.kscience.simba.state.ActorMitosisCell
+import space.kscience.simba.utils.Vector
+
+@kotlinx.serialization.Serializable
+data class ActorMitosisState(val vectorId: Vector, val colorIntensity: Double)
 
 class Mitosis(private val width: Int, private val height: Int, private val cellSize: Int): GameSystem {
     override val name: String = "Mitosis"
@@ -29,7 +32,7 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
 
     private var iteration = 1L
 
-    private suspend fun getLifeData(iteration: Long): List<ActorMitosisCell> {
+    private suspend fun getLifeData(iteration: Long): List<ActorMitosisState> {
         return jsonClient.get("$endpoint/status/mitosis/$iteration")
     }
 
@@ -66,7 +69,7 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
         val field = getLifeData(iteration)
         val doubleSize = cellSize.toDouble()
         field.forEach {
-            val color = (it.state.colorIntensity * 255).toInt().toString(16)
+            val color = (it.colorIntensity * 255).toInt().toString(16)
             val (i, j) = it.vectorId
             context.fillStyle = "#00${color.fillZero()}00"
             context.fillRect(i * doubleSize, j * doubleSize, doubleSize, doubleSize)

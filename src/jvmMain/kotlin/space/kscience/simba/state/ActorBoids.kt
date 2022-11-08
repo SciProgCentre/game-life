@@ -6,7 +6,6 @@ import space.kscience.simba.utils.Vector2
 @kotlinx.serialization.Serializable
 data class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2) : ObjectState
 
-@kotlinx.serialization.Serializable
 data class ActorBoidsCell(
     val id: Int,
     override val state: ActorBoidsState,
@@ -14,8 +13,8 @@ data class ActorBoidsCell(
     override val vectorId: Vector = intArrayOf(id)
 
     override suspend fun iterate(
-        convertState: suspend (ActorBoidsState, List<ActorBoidsCell>) -> ActorBoidsState,
+        convertState: suspend (ActorBoidsState, List<ActorBoidsState>) -> ActorBoidsState
     ): ActorBoidsCell {
-        return ActorBoidsCell(id, convertState(state, neighbours))
+        return ActorBoidsCell(id, convertState(state, getNeighboursStates()))
     }
 }

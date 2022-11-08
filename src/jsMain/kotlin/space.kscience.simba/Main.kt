@@ -11,7 +11,7 @@ import space.kscience.simba.simulation.*
 
 private val scope = MainScope()
 private val games = listOf(
-    GameOfLife(100, 100, 5),
+    GameOfLife(10, 10, 50),
     Boids(1000, 1000),
     Mitosis(100, 100, 5),
     SnakeGame(10, 10, 20),
@@ -20,7 +20,7 @@ private val games = listOf(
 private fun GameSystem.initGame() {
     this.initializeControls(document.getElementById("controls") as HTMLElement, scope)
     this.initializeCanvas(document.getElementById("gamefield") as HTMLCanvasElement)
-    scope.launch { render(1L) }
+    scope.launch { render(0L) }
 }
 
 fun main() {

@@ -10,5 +10,5 @@ import space.kscience.simba.state.ObjectState
 abstract class AkkaActor : Actor {
     lateinit var akkaActorRef: ActorRef<Message>
 
-    abstract fun <C: Cell<C, State>, State: ObjectState> create(state: C, nextState: suspend (State, List<C>) -> State): Behavior<Message>
+    abstract fun <C: Cell<C, State>, State: ObjectState> create(): Behavior<Message>
 }

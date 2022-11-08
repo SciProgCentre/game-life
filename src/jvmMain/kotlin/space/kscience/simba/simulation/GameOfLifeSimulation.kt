@@ -8,14 +8,14 @@ import kotlin.random.Random
 
 class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState>("gameOfLife") {
     private val random = Random(0)
-    private val n = 100
-    private val m = 100
+    private val n = 10
+    private val m = 10
 
     override val engine: Engine = EngineFactory.createEngine(
-        intArrayOf(n, m), gameOfLifeNeighbours, { (i, j) -> classicCell(i, j, random.nextBoolean()) }, ::actorNextStep
+        intArrayOf(n, m), gameOfLifeNeighbours, { (i, j) -> classicCell(i, j, random.nextBoolean()) }, //::actorNextStep
     )
 
-    override val printSystem: PrintSystem<ActorGameOfLifeCell, ActorGameOfLifeState> = PrintSystem(n * m)
+    override val printSystem: PrintSystem<ActorGameOfLifeState> = PrintSystem(n * m)
 
     init {
         engine.addNewSystem(printSystem)

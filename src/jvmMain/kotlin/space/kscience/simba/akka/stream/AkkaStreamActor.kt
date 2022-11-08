@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
+import space.kscience.simba.simulation.iterationMap
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
 import java.util.*
@@ -30,9 +31,8 @@ import kotlin.coroutines.CoroutineContext
 class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private val system: ActorSystem<Void>,
     private val engine: AkkaStreamEngine<C, State>,
-    private var state: C,
-    private val nextState: suspend (State, List<C>) -> State,
 ): Actor, CoroutineScope {
+    private lateinit var state: C
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
 
     private val queue: SourceQueue<Message>
@@ -65,10 +65,11 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
         this@AkkaStreamActor.subscriptions.runForeach({ msg ->
             // TODO ensure that subscription is active
             when (msg) {
+                is Init<*, *> -> state = msg.state as C
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState<*, *> -> Unit
-                else -> throw AssertionError("Message $msg is not supported")
+                is PassState<*> -> Unit
+                is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<C, State>)
             }
         }, system)
     }
@@ -82,11 +83,12 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private fun tryToIterate() {
         if (state.isReadyForIteration(neighbours.size)) {
             launch {
-                state = state.iterate(nextState)
-
-                if (iterations.decrementAndGet() > 0) {
-                    forceIteration()
-                }
+                handleWithoutResendingToEngine(
+                    UpdateSelfState(
+                        state.iterate(iterationMap[state::class.java] as suspend (State, List<State>) -> State),
+                        timestamp
+                    )
+                )
             }
         }
     }
@@ -97,7 +99,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     }
 
     private fun forceIteration() {
-        val passState = PassState(state, ++timestamp)
+        val passState = PassState(state.state, ++timestamp)
         handle(passState)
 
         neighbours.mapIndexed { i, it ->
@@ -113,12 +115,12 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
 
     @Suppress("UNCHECKED_CAST")
     private fun pullMessage(neighbour: SinkQueueWithCancel<Message>, index: Int): CompletableFuture<Void> {
-        return neighbour.pull().thenApply<PassState<C, State>?> { maybeMsg ->
+        return neighbour.pull().thenApply<PassState<State>?> { maybeMsg ->
             if (maybeMsg.isEmpty) return@thenApply null
 
             val msg = maybeMsg.get()
-            if (msg !is PassState<*, *>) return@thenApply null
-            msg as PassState<C, State>
+            if (msg !is PassState<*>) return@thenApply null
+            msg as PassState<State>
         }.thenAccept { state ->
             if (state == null) {
                 futures += pullMessage(neighbour, index)
@@ -128,5 +130,13 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
                 }
             }
         }.toCompletableFuture()
+    }
+
+    private fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
+        state = msg.newCell
+
+        if (iterations.decrementAndGet() > 0) {
+            forceIteration()
+        }
     }
 }

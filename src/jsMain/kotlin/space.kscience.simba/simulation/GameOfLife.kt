@@ -12,11 +12,14 @@ import kotlinx.dom.clear
 import kotlinx.html.button
 import kotlinx.html.dom.append
 import kotlinx.html.id
+import kotlinx.serialization.Serializable
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
-import space.kscience.simba.state.ActorGameOfLifeCell
+
+@Serializable
+class ActorGameOfLifeState(val i: Int, val j: Int, val isAlive: Boolean)
 
 class GameOfLife(private val width: Int, private val height: Int, private val cellSize: Int): GameSystem {
     override val name: String = "Game Of Life"
@@ -29,7 +32,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
 
     private var iteration = 1L
 
-    private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeCell> {
+    private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeState> {
         return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
     }
 
@@ -41,13 +44,13 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
                 +"Start"
             }.onclick = {
                 (document.getElementById("next") as HTMLButtonElement).disabled = true
-                window.setInterval({ scope.launch { render(++iteration) } }, 500)
+                window.setInterval({ scope.launch { render(iteration++) } }, 500)
             }
 
             button {
                 id = "next"
                 +"Next"
-            }.onclick = { scope.launch { render(++iteration) } }
+            }.onclick = { scope.launch { render(iteration++) } }
         }
     }
 
@@ -62,7 +65,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
         val field = getLifeData(iteration)
         val doubleSize = cellSize.toDouble()
         field.forEach {
-            val color = if (it.isAlive()) "#000000" else "#FFFFFF"
+            val color = if (it.isAlive) "#000000" else "#FFFFFF"
             context.fillStyle = color
             context.fillRect(it.i * doubleSize, it.j * doubleSize, doubleSize, doubleSize)
         }

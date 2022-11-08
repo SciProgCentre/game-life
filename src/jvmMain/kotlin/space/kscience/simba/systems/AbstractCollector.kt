@@ -7,24 +7,24 @@ import kotlinx.coroutines.launch
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
-import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-abstract class AbstractCollector<C : Cell<C, State>, State : ObjectState> : EngineSystem, CoroutineScope {
+abstract class AbstractCollector<State : ObjectState> : EngineSystem, CoroutineScope {
     override val coroutineContext = Dispatchers.Unconfined
 
-    private val statesByTimestamp = mutableMapOf<Long, MutableSet<C>>()
-    private val continuations = mutableListOf<Pair<Long, Continuation<Set<C>>>>()
+    private val statesByTimestamp = mutableMapOf<Long, MutableSet<State>>()
+    private val continuations = mutableListOf<Pair<Long, Continuation<Set<State>>>>()
     private val lock = Object()
 
-    private val channel = Channel<PassState<C, State>>()
+    private val channel = Channel<PassState<State>>()
 
     init {
         launch {
             for (msg in channel) {
+                println("Abstract collector $msg")
                 statesByTimestamp
                     .getOrPut(msg.timestamp) { mutableSetOf() }
                     .add(msg.state)
@@ -40,8 +40,8 @@ abstract class AbstractCollector<C : Cell<C, State>, State : ObjectState> : Engi
 
     @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
-        if (msg is PassState<*, *>) {
-            launch { channel.send(msg as PassState<C, State>) }
+        if (msg is PassState<*>) {
+            launch { channel.send(msg as PassState<State>) }
         }
     }
 
@@ -56,15 +56,15 @@ abstract class AbstractCollector<C : Cell<C, State>, State : ObjectState> : Engi
         }
     }
 
-    protected fun tryToGetDataFor(iteration: Long): Set<C>? = statesByTimestamp[iteration]
+    protected fun tryToGetDataFor(iteration: Long): Set<State>? = statesByTimestamp[iteration]
 
     // TODO find a way to use only one `isCompleteFor` call
-    suspend fun getDataFor(iteration: Long): Set<C> {
+    suspend fun getDataFor(iteration: Long): Set<State> {
         if (isCompleteFor(iteration)) {
             return statesByTimestamp[iteration]!!
         }
 
-        return suspendCoroutine<Set<C>> {
+        return suspendCoroutine<Set<State>> {
             if (isCompleteFor(iteration)) {
                 it.resume(statesByTimestamp[iteration]!!)
             } else {

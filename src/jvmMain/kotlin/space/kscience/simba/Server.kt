@@ -12,7 +12,7 @@ import io.ktor.server.netty.*
 import space.kscience.simba.simulation.*
 
 private val simulations = listOf(
-    GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation(), SnakeLearningWithManagerSimulation()
+    GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation()
 )
 
 fun main(args: Array<String>) {

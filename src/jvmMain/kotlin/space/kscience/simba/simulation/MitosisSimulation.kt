@@ -7,6 +7,7 @@ import space.kscience.simba.state.ActorMitosisState
 import space.kscience.simba.state.gameOfLifeNeighbours
 import space.kscience.simba.systems.PrintSystem
 import space.kscience.simba.utils.Vector
+import space.kscience.simba.utils.compareTo
 import kotlin.math.pow
 import kotlin.random.Random
 
@@ -16,17 +17,11 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState>("mitosi
     private val n = 100
     private val m = 100
 
-    private val filter = doubleArrayOf(
-        -0.939, 0.88, -0.939,
-        0.88, 0.4, 0.88,
-        -0.939, 0.88, -0.939
-    )
-
     override val engine: Engine = EngineFactory.createEngine(
-        intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell, ::nextStep
+        intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell
     )
 
-    override val printSystem: PrintSystem<ActorMitosisCell, ActorMitosisState> = PrintSystem(n * m)
+    override val printSystem: PrintSystem<ActorMitosisState> = PrintSystem(n * m)
 
     init {
         engine.addNewSystem(printSystem)
@@ -34,19 +29,28 @@ class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState>("mitosi
         engine.iterate()
     }
 
-    private fun activation(value: Double): Double {
-        return -1.0 / (0.9 * value.pow(2.0) + 1.0) + 1.0
-    }
-
     private fun nextCell(vector: Vector): ActorMitosisCell {
-        return ActorMitosisCell(vector, ActorMitosisState(random.nextDouble()))
+        return ActorMitosisCell(vector, ActorMitosisState(vector, random.nextDouble()))
     }
 
-    private fun nextStep(state: ActorMitosisState, neighbours: List<ActorMitosisCell>): ActorMitosisState {
-        val image = neighbours.sorted().map { it.state.colorIntensity }.toMutableList()
-        image.add(filter.size / 2, state.colorIntensity)
+    companion object {
+        private val filter = doubleArrayOf(
+            -0.939, 0.88, -0.939,
+            0.88, 0.4, 0.88,
+            -0.939, 0.88, -0.939
+        )
 
-        val convolution = filter.zip(image).sumOf { (i, j) -> i * j }
-        return ActorMitosisState(activation(convolution))
+        private fun activation(value: Double): Double {
+            return -1.0 / (0.9 * value.pow(2.0) + 1.0) + 1.0
+        }
+
+        suspend fun nextStep(state: ActorMitosisState, neighbours: List<ActorMitosisState>): ActorMitosisState {
+            val comparator = Comparator<ActorMitosisState> { o1, o2 -> o1.vectorId.compareTo(o2.vectorId) }
+            val image = neighbours.sortedWith(comparator).map { it.colorIntensity }.toMutableList()
+            image.add(filter.size / 2, state.colorIntensity)
+
+            val convolution = filter.zip(image).sumOf { (i, j) -> i * j }
+            return ActorMitosisState(state.vectorId, activation(convolution))
+        }
     }
 }

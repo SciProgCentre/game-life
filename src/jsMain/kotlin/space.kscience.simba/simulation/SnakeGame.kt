@@ -17,14 +17,20 @@ import kotlinx.html.id
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
-import space.kscience.plotly.*
+import space.kscience.plotly.Plot
+import space.kscience.plotly.layout
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.Trace
 import space.kscience.plotly.models.TraceType
-import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
-import space.kscience.simba.state.*
+import space.kscience.plotly.plot
+import space.kscience.plotly.scatter
 import space.kscience.simba.utils.Vector2
-import kotlin.random.Random
+
+@kotlinx.serialization.Serializable
+data class SnakeState(val body: List<Vector2>, val bait: Vector2?)
+
+@kotlinx.serialization.Serializable
+data class SnakeGameState(val eatenBate: Int, val history: List<SnakeState>)
 
 class SnakeGame(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem {
     override val name: String = "Snake"
@@ -38,9 +44,6 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
         }
     }
 
-    private val seed = 0
-    private val random = Random(seed)
-    private val snake = Snake(width, height, seed)
     private val eatenBaitByIteration = mutableListOf<Int>()
     private var iteration = 1L
 
@@ -79,26 +82,14 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
         }
     }
 
-    private suspend fun getSnakeCell(iteration: Long): List<ActorSnakeCell> {
-        return jsonClient.get("$endpoint/status/${name.lowercase()}/$iteration")
+    private suspend fun getSnakeGameState(iteration: Long): SnakeGameState {
+        return jsonClient.get("$endpoint/status/${name.lowercase()}/play/$iteration")
     }
 
     // TODO simplify game; just one iteration (generate food once)
     override suspend fun render(iteration: Long) {
-        val history = mutableListOf<SnakeState>()
-        snake.restart()
-        val cell = getSnakeCell(iteration).first()
-
-        fun nextDirection(qTable: QTable<SnakeState, SnakeAction>, currentState: SnakeState, oldDirection: Snake.Direction?): Snake.Direction {
-            return qTable.getNextDirection(currentState, random.getRandomSnakeDirection(oldDirection), oldDirection, true)
-        }
-
-        eatenBaitByIteration.add(0)
-        snake.play(cell.state, 100, ::nextDirection) { game, oldState, _ ->
-            history += oldState
-            if (game.ateBait()) eatenBaitByIteration[eatenBaitByIteration.lastIndex]++
-        }
-
+        val (eatenBate, history) = getSnakeGameState(iteration)
+        eatenBaitByIteration.add(eatenBate)
         history.forEach { (bodyWithHead, baitPosition) ->
             drawCurrentGameState(bodyWithHead, baitPosition)
             delay(100)

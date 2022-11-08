@@ -4,6 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.actor.typed.javadsl.Behaviors
 import space.kscience.simba.akka.AkkaEngine
 import space.kscience.simba.engine.AddNeighbour
+import space.kscience.simba.engine.Init
 import space.kscience.simba.engine.Iterate
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
@@ -17,7 +18,6 @@ class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
-    private val nextState: suspend (State, List<C>) -> State,
 ) : AkkaEngine<Void>() {
     override val actorSystem: ActorSystem<Void> by lazy {
         ActorSystem.create(Behaviors.empty(), "AkkaSystem")
@@ -29,7 +29,7 @@ class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState>(
 
     override fun init() {
         field = (0 until dimensions.product()).map { index ->
-            AkkaStreamActor(actorSystem, this, init(index.toVector(dimensions)), nextState)
+            AkkaStreamActor(actorSystem, this).apply { this.handle(Init(init(index.toVector(dimensions)))) }
         }
 
         initialTotalCountOfNeighbours = List(field.size) { index -> getNeighboursIds(index.toVector(dimensions)).size }.sum()

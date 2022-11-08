@@ -11,11 +11,11 @@ import kotlinx.coroutines.launch
 import kotlinx.dom.clear
 import kotlinx.html.*
 import kotlinx.html.dom.append
+import kotlinx.serialization.Serializable
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLButtonElement
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
-import space.kscience.simba.state.ActorBoidsCell
 import space.kscience.simba.utils.*
 
 class TriangleSprite(private val position: Vector2, private val direction: Vector2) {
@@ -40,6 +40,9 @@ class TriangleSprite(private val position: Vector2, private val direction: Vecto
     }
 }
 
+@Serializable
+class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2)
+
 class Boids(private val width: Int, private val height: Int): GameSystem {
     override val name: String = "Boids"
 
@@ -52,7 +55,7 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
     private var iteration = 1L
     private var withAllRules = false
 
-    private suspend fun getBoidsData(iteration: Long): List<ActorBoidsCell> {
+    private suspend fun getBoidsData(iteration: Long): List<ActorBoidsState> {
         return jsonClient.get("$endpoint/status/boids/$iteration")
     }
 
@@ -108,7 +111,7 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
         // important to fetch data first and only then clear canvas
         val field = getBoidsData(iteration)
         clear()
-        field.map { TriangleSprite(it.state.position, it.state.direction) }.forEach { sprite ->
+        field.map { TriangleSprite(it.position, it.direction) }.forEach { sprite ->
             sprite.draw(context)
         }
     }
