@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
     <appender name="STDOUT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- we want to avoid noise output from actors into console, so we filter it by marker -->
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>actor</marker>
+            </evaluator>
+            <onMatch>DENY</onMatch>
+        </filter>
+
         <encoder>
             <pattern>[%date{ISO8601}] [%level] [%logger] [%X{akkaAddress}] [%marker] [%thread] - %msg%n</pattern>
         </encoder>
@@ -12,8 +20,25 @@
         <appender-ref ref="STDOUT" />
     </appender>
 
+    <appender name="ACTORS_FILE" class="ch.qos.logback.core.FileAppender">
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>actor</marker>
+            </evaluator>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+
+        <file>build/actors.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>[%date{ISO8601}] [%-5level] [%thread] [%M] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <root level="info">
         <appender-ref ref="ASYNC"/>
+        <appender-ref ref="ACTORS_FILE"/>
     </root>
 
 </configuration>

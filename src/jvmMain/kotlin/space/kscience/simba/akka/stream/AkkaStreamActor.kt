@@ -12,7 +12,6 @@ import space.kscience.simba.engine.*
 import space.kscience.simba.simulation.iterationMap
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
@@ -34,6 +33,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
 ): Actor, CoroutineScope {
     private lateinit var state: C
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
+    private val log = system.log()
 
     private val queue: SourceQueue<Message>
     private val subscriptions: Source<Message, NotUsed>
@@ -55,6 +55,8 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     }
 
     init {
+        log.debug("Create akka stream Actor")
+
         val sink = BroadcastHub.of(Message::class.java, 8)
         val source = Source.queue<Message>(8, OverflowStrategy.backpressure())
         val (queue, subscriptions) = source.toMat(sink, Keep.both()).run(system).let { it.first() to it.second() }

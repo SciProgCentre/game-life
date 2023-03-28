@@ -13,41 +13,24 @@ import akka.persistence.typed.javadsl.EventSourcedBehavior
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.slf4j.MarkerFactory
 import space.kscience.simba.akka.ActorInitialized
 import space.kscience.simba.akka.ActorMessageForward
+import space.kscience.simba.akka.MainActor
 import space.kscience.simba.akka.MainActorMessage
 import space.kscience.simba.engine.*
 import space.kscience.simba.simulation.iterationMap
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
-import space.kscience.simba.state.actorNextStep
 import kotlin.coroutines.CoroutineContext
-
-class WrappedCellActor(
-    private val mainActorRef: ActorRef<MainActorMessage>,
-    private val entityId: String
-): Actor {
-    override fun handleWithoutResendingToEngine(msg: Message) {
-        TODO("Not yet implemented")
-    }
-
-    override fun sendToEngine(msg: Message) {
-        TODO("Not yet implemented")
-    }
-
-    override fun handle(msg: Message) {
-        TODO("Not yet implemented")
-    }
-
-    fun unwrap(context: ActorContext<Message>): CellActor {
-        return CellActor(mainActorRef, ClusterSharding.get(context.system).entityRefFor(CellActor.ENTITY_TYPE, entityId))
-    }
-}
 
 class CellActor(
     private val mainActorRef: ActorRef<MainActorMessage>,
-    private val entityRef: EntityRef<Message>,
+    internal val entityId: String
 ): Actor {
+    @Transient
+    private lateinit var entityRef: EntityRef<Message>
+
     companion object {
         val ENTITY_TYPE: EntityTypeKey<Message> = EntityTypeKey.create(Message::class.java, CellActor::class.java.simpleName)
     }
@@ -59,27 +42,44 @@ class CellActor(
     override fun sendToEngine(msg: Message) {
         mainActorRef.tell(ActorMessageForward(msg))
     }
+
+    // This method is needed because we can't serialize `EntityRef`, so we must create it directly on agent
+    fun unwrap(context: ActorContext<Message>): CellActor {
+        entityRef = ClusterSharding.get(context.system).entityRefFor(ENTITY_TYPE, entityId)
+        return this
+    }
 }
 
-//TODO
-//inline fun <T, reified U : T> ReceiveBuilder<T>.addHandler(noinline handler: (U) -> Behavior<T>): ReceiveBuilder<T> {
-//    return onMessage(U::class.java, handler)
-//}
+internal data class PersistentState<C : Cell<C, State>, State : ObjectState>(
+    val cell: C,
+    val timestamp: Long = 0L,
+    val iterations: Int = 0,
+    val neighbours: List<Actor> = mutableListOf(),
+    val earlyStates: MutableMap<Long, MutableList<State>> = linkedMapOf(),
+    val iterating: Boolean = false
+)
 
 internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     private val context: ActorContext<Message>,
-    entityId: String,
+    private val entityId: String,
     persistenceId: PersistenceId
 ): EventSourcedBehavior<Message, Message, PersistentState<C, State>>(persistenceId), CoroutineScope {
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
     private val log = context.system.log()
 
     init {
-        log.info("ID $entityId")
+        log.info(MainActor.logMarker, "Create akka Actor with ID $entityId")
+    }
+
+    // Inline is used here because we want to print correct method where `log.info` was called (see %M option in config)
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun info(msg: String, state: PersistentState<C, State>?) {
+        log.info(MainActor.logMarker, "[Actor $entityId] [Time ${state?.timestamp}] $msg")
     }
 
     override fun emptyState(): PersistentState<C, State>? {
-        // TODO reconsider
+        // NB: this nullable state can be a problem because in every method we accept non-nullable state.
+        // But it should be OK for as long as we process `Init` message as a first one.
         return null
     }
 
@@ -87,9 +87,11 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
         return newCommandHandlerBuilder()
             .forAnyState()
             .onCommand(Init::class.java) { it ->
-                Effect().persist(it)
-                    .thenRun { (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized()) }
-                // `thenRun` is side effect, it would not be called if object was recreated
+                Effect().persist(it).thenRun {
+                    // `thenRun` is side effect, it would NOT be called if object was recreated
+                    @Suppress("UNCHECKED_CAST")
+                    (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized(entityId))
+                }
             }
 //            .onCommand(UpdateSelfState::class.java) { _ ->
 //                Effect().none()
@@ -110,25 +112,27 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     }
 
     private fun onInitMessage(msg: Init<C, State>): PersistentState<C, State> {
-        log.info("new init ${msg.state}")
+        info("Got `Init` message \"${msg.state}\"", null)
         return PersistentState(msg.state)
     }
 
     private fun onAddNeighbourMessage(oldState: PersistentState<C, State>, msg: AddNeighbour): PersistentState<C, State> {
-        log.info("new neighbour for ($oldState) at ${context.system.address()}")
-        return oldState.copy(neighbours = oldState.neighbours + msg.cellActor)
+        val cellActor = msg.cellActor as CellActor
+        info("Got request for new neighbour with id ${cellActor.entityId}", oldState)
+        cellActor.unwrap(context)
+        return oldState.copy(neighbours = oldState.neighbours + cellActor)
     }
 
     private fun onIterateMessage(oldState: PersistentState<C, State>, msg: Iterate): PersistentState<C, State> {
-        log.info("new iterate at ${context.system.address()}")
+        info("Gor new iterate request", oldState)
         if (oldState.iterations != 0) return oldState.copy(iterations = oldState.iterations + 1)
         return forceIteration(oldState)
     }
 
     private fun forceIteration(oldState: PersistentState<C, State>): PersistentState<C, State> {
-        log.info("time ${oldState.timestamp} at ${context.system.address()}")
+        info("Send current state to neighbours", oldState)
 
-        oldState.neighbours.forEach { (it as WrappedCellActor).unwrap(context).handle(PassState(oldState.cell.state, oldState.timestamp)) }
+        oldState.neighbours.forEach { it.handle(PassState(oldState.cell.state, oldState.timestamp)) }
         val newState = oldState.copy(earlyStates = LinkedHashMap(oldState.earlyStates.filter { it.key != oldState.timestamp }))
         oldState.earlyStates.remove(oldState.timestamp)?.forEach {
             saveState(newState, PassState(it, newState.timestamp))
@@ -137,14 +141,13 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     }
 
     private fun onPassStateMessage(oldState: PersistentState<C, State>, msg: PassState<State>): PersistentState<C, State> {
+        info("Got new message \"$msg\"", oldState)
         saveState(oldState, msg)
         if (msg.timestamp != oldState.timestamp) return oldState
         return tryToIterate(oldState)
     }
 
     private fun saveState(oldState: PersistentState<C, State>, msg: PassState<State>) {
-        log.info("got pass msg ($msg) at time ${oldState.timestamp} for (${oldState.cell.state}) at ${context.system.address()}")
-
         if (msg.timestamp == oldState.timestamp) {
             oldState.cell.addNeighboursState(msg.state)
             return
@@ -158,12 +161,12 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     private fun tryToIterate(oldState: PersistentState<C, State>): PersistentState<C, State> {
         if (!oldState.cell.isReadyForIteration(oldState.neighbours.size)) return oldState
 
-        log.info("iterating at time ${oldState.timestamp} for (${oldState.cell.state})")
+        info("Launch process to create new state", oldState)
         val newState = oldState.copy(iterating = true)
         launch {
             val newCell = newState.cell.iterate(iterationMap[oldState.cell::class.java] as suspend (State, List<State>) -> State)
             context.self.tell(UpdateSelfState(newCell, oldState.timestamp))
-            newCell.let { /*if (it.i == 0 && it.j == 0) */log.info("new state for (${oldState.cell.state}) at ${context.system.address()}") }
+            info("New state \"${newCell.state}\" was created", oldState)
         }
         return newState
     }
@@ -171,24 +174,15 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     private fun onUpdateSelfState(oldState: PersistentState<C, State>, msg: UpdateSelfState<C, State>): PersistentState<C, State> {
         if (oldState.timestamp != msg.timestamp) {
             // TODO document why we need this. It is necessary because on recovery this event will be created twice, but we need one only
-            log.info("already updated")
+            info("Update call was discarded because already updated", oldState)
             return oldState
         }
 
         val newState = oldState.copy(cell = msg.newCell, timestamp = oldState.timestamp + 1, iterating = false)
-        log.info("update state; old (${oldState.cell.state}) new (${newState.cell.state})}")
+        info("State was updated from \"${oldState.cell.state}\" to \"${newState.cell.state}\"", oldState)
         if (newState.iterations != 0) {
             return forceIteration(newState.copy(iterations =  newState.iterations - 1))
         }
         return newState
     }
 }
-
-internal data class PersistentState<C : Cell<C, State>, State : ObjectState>(
-    val cell: C,
-    val timestamp: Long = 0L,
-    val iterations: Int = 0,
-    val neighbours: List<Actor> = mutableListOf(),
-    val earlyStates: MutableMap<Long, MutableList<State>> = linkedMapOf(),
-    val iterating: Boolean = false
-)

@@ -5,11 +5,10 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import akka.actor.typed.receptionist.ServiceKey
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.EntityRef
+import org.slf4j.MarkerFactory
 import space.kscience.simba.akka.actor.CellActor
-import space.kscience.simba.akka.actor.WrappedCellActor
 import space.kscience.simba.engine.AddNeighbour
 import space.kscience.simba.engine.Init
 import space.kscience.simba.engine.Iterate
@@ -28,7 +27,7 @@ class SpawnCells<C: Cell<C, State>, State: ObjectState>(
     val neighborsIndices: Set<Vector>,
     val init: (Vector) -> C,
 ): MainActorMessage()
-class ActorInitialized(): MainActorMessage()
+class ActorInitialized(val id: String): MainActorMessage()
 object SyncIterate: MainActorMessage()
 class ActorMessageForward(val content: Message): MainActorMessage()
 
@@ -36,6 +35,7 @@ class MainActor private constructor(
     context: ActorContext<MainActorMessage>,
     private val engine: AkkaEngine<MainActorMessage>
 ): AbstractBehavior<MainActorMessage>(context) {
+    private val log = context.log
     private lateinit var neighborsIndices: Set<Vector>
     private lateinit var dimensions: Vector
 
@@ -68,14 +68,13 @@ class MainActor private constructor(
 
     private fun tellEachEntity(createMsg: (Int) -> Message) {
         (0 until dimensions.product()).map { index ->
-            CellActor(context.self, index.toString().createEntityRef()).handleWithoutResendingToEngine(createMsg(index))
+            index.toString().createEntityRef().tell(createMsg(index))
         }
     }
 
     private fun tellEachEntityWithList(createMsg: (Int) -> List<Message>) {
         (0 until dimensions.product()).map { index ->
-            val actor = CellActor(context.self, index.toString().createEntityRef())
-            createMsg(index).forEach { actor.handleWithoutResendingToEngine(it) }
+            createMsg(index).forEach { index.toString().createEntityRef().tell(it) }
         }
     }
 
@@ -89,19 +88,19 @@ class MainActor private constructor(
     }
 
     private fun onSyncIterate(msg: SyncIterate): MainActor {
-        context.log.info("Iterate on ${context.system.address()}")
+        log.info(logMarker, "[Main] New iterate request")
         tellEachEntity { Iterate() }
         return this
     }
 
     private fun onActorInitialized(msg: ActorInitialized): MainActor {
-        context.log.info("Initialized")
+        log.info(logMarker, "[Main] Initialized actor with ID ${msg.id}")
         if (++initializedCount == dimensions.product()) {
-            context.log.info("Started")
+            log.info(logMarker, "[Main] All actors are initialized. Start engine.")
             engine.start {
                 tellEachEntityWithList { index ->
                     getNeighboursIds(index.toVector(dimensions))
-                        .map { AddNeighbour(WrappedCellActor(context.self, it.toIndex(dimensions).toString())) }
+                        .map { AddNeighbour(CellActor(context.self, it.toIndex(dimensions).toString())) }
                 }
             }
         }
@@ -114,6 +113,8 @@ class MainActor private constructor(
     }
 
     companion object {
+        internal val logMarker = MarkerFactory.getMarker("actor")
+
         fun create(engine: AkkaEngine<MainActorMessage>): Behavior<MainActorMessage> {
             return Behaviors.setup {
                 MainActor(it, engine)

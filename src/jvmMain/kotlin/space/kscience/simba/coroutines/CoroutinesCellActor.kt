@@ -16,6 +16,18 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
     private val engine: CoroutinesActorEngine<C, State>,
     override val coroutineContext: CoroutineContext,
 ) : Actor, CoroutineScope {
+    private class Log {
+        fun debug(value: String) {
+            println(value)
+        }
+    }
+
+    private val log = Log()
+
+    init {
+        log.debug("Create coroutine Actor")
+    }
+
     private val actor = actor<Message> {
         var timestamp = 0L
         var iterations = 0
