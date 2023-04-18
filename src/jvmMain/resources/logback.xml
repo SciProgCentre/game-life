@@ -32,7 +32,7 @@
         <file>build/actors.log</file>
         <append>true</append>
         <encoder>
-            <pattern>[%date{ISO8601}] [%-5level] [%thread] [%M] - %msg%n</pattern>
+            <pattern>[%date{ISO8601}] [%-5level] [%X{akkaAddress}] [%M] - %msg%n</pattern>
         </encoder>
     </appender>
 
