@@ -85,12 +85,8 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private fun tryToIterate() {
         if (state.isReadyForIteration(neighbours.size)) {
             launch {
-                handleWithoutResendingToEngine(
-                    UpdateSelfState(
-                        state.iterate(iterationMap[state::class.java] as suspend (State, List<State>) -> State),
-                        timestamp
-                    )
-                )
+                val newCell = state.iterate(iterationMap[state::class.java] as suspend (State, List<State>) -> State)
+                handleWithoutResendingToEngine(UpdateSelfState(newCell, timestamp))
             }
         }
     }
@@ -101,7 +97,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     }
 
     private fun forceIteration() {
-        val passState = PassState(state.state, ++timestamp)
+        val passState = PassState(state.state, timestamp)
         handle(passState)
 
         neighbours.mapIndexed { i, it ->
@@ -137,6 +133,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
         state = msg.newCell
 
+        timestamp++ // Note: it is important to update `timestamp` here (and not in `launch`) to avoid race conditions
         if (iterations.decrementAndGet() > 0) {
             forceIteration()
         }

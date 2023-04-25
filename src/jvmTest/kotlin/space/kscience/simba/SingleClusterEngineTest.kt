@@ -1,6 +1,8 @@
 package space.kscience.simba
 
+import com.typesafe.config.ConfigFactory
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Test
 import space.kscience.simba.akka.actor.AkkaActorEngine
 import space.kscience.simba.akka.stream.AkkaStreamEngine
@@ -12,24 +14,35 @@ import space.kscience.simba.utils.Vector
 import java.util.*
 import kotlin.test.assertEquals
 
-class EngineTest {
+class SingleClusterEngineTest {
     private val n = 7
     private val m = 7
+
+    private val testLocalConfig = ConfigFactory.load("local1_test.conf")
 
     private fun fillSquare(vector: Vector): ActorGameOfLifeCell {
         val (i, j) = vector
         return classicCell(i, j, i in 2..4 && j in 2..4)
     }
 
+    @After
+    fun tearDown() {
+        clearActorLogs()
+    }
+
     @Test
     fun testAkkaGameOfLife() {
-        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare)
+        val simulationEngine = AkkaActorEngine(
+            intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
+        )
         checkEngineCorrectness(simulationEngine)
     }
 
     @Test
     fun testAkkaGameOfLifeAfterIterations() {
-        val simulationEngine = AkkaActorEngine(intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare)
+        val simulationEngine = AkkaActorEngine(
+            intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
+        )
         checkEngineCorrectnessAfterIterations(simulationEngine)
     }
 
@@ -67,7 +80,8 @@ class EngineTest {
 
         val akkaEngine = AkkaActorEngine(
             intArrayOf(bigN, bigM),
-            gameOfLifeNeighbours
+            gameOfLifeNeighbours,
+            testLocalConfig,
         ) { (i, j) -> classicCell(i, j, random1.nextBoolean()) }
         val coroutinesEngine = CoroutinesActorEngine(
             intArrayOf(bigN, bigM),
@@ -88,7 +102,8 @@ class EngineTest {
 
         val akkaEngine = AkkaActorEngine(
             intArrayOf(bigN, bigM),
-            gameOfLifeNeighbours
+            gameOfLifeNeighbours,
+            testLocalConfig,
         ) { (i, j) -> classicCell(i, j, random1.nextBoolean()) }
         val akkaStreamEngine = AkkaStreamEngine(
             intArrayOf(bigN, bigM),
@@ -106,13 +121,13 @@ class EngineTest {
         secondEngine.addNewSystem(secondPrintSystem)
         secondEngine.init()
 
-        for (i in 0..iterations) {
+        for (i in 0L..iterations) {
             runBlocking {
                 firstEngine.iterate()
                 secondEngine.iterate()
 
-                val firstField = actorsToString(firstPrintSystem.render(i + 1L).toList())
-                val secondField = actorsToString(secondPrintSystem.render(i + 1L).toList())
+                val firstField = actorsToString(firstPrintSystem.render(i).toList())
+                val secondField = actorsToString(secondPrintSystem.render(i).toList())
 
                 assertEquals(firstField.trim(), secondField.trim())
             }
@@ -127,19 +142,19 @@ class EngineTest {
 
         runBlocking {
             simulationEngine.iterate()
-            val field1 = actorsToString(printSystem.render(1).toList())
+            val field1 = actorsToString(printSystem.render(0).toList())
             assertEquals("OOOOOOO\nOOOOOOO\nOOXXXOO\nOOXXXOO\nOOXXXOO\nOOOOOOO\nOOOOOOO", field1.trim())
 
             simulationEngine.iterate()
-            val field2 = actorsToString(printSystem.render(2).toList())
+            val field2 = actorsToString(printSystem.render(1).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXOXOO\nOXOOOXO\nOOXOXOO\nOOOXOOO\nOOOOOOO", field2.trim())
 
             simulationEngine.iterate()
-            val field3 = actorsToString(printSystem.render(3).toList())
+            val field3 = actorsToString(printSystem.render(2).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXXXOO\nOXXOXXO\nOOXXXOO\nOOOXOOO\nOOOOOOO", field3.trim())
 
             simulationEngine.iterate()
-            val field4 = actorsToString(printSystem.render(4).toList())
+            val field4 = actorsToString(printSystem.render(3).toList())
             assertEquals("OOOOOOO\nOOXXXOO\nOXOOOXO\nOXOOOXO\nOXOOOXO\nOOXXXOO\nOOOOOOO", field4.trim())
         }
     }
@@ -156,16 +171,16 @@ class EngineTest {
         simulationEngine.iterate()
 
         runBlocking {
-            val field1 = actorsToString(printSystem.render(1).toList())
+            val field1 = actorsToString(printSystem.render(0).toList())
             assertEquals("OOOOOOO\nOOOOOOO\nOOXXXOO\nOOXXXOO\nOOXXXOO\nOOOOOOO\nOOOOOOO", field1.trim())
 
-            val field2 = actorsToString(printSystem.render(2).toList())
+            val field2 = actorsToString(printSystem.render(1).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXOXOO\nOXOOOXO\nOOXOXOO\nOOOXOOO\nOOOOOOO", field2.trim())
 
-            val field3 = actorsToString(printSystem.render(3).toList())
+            val field3 = actorsToString(printSystem.render(2).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXXXOO\nOXXOXXO\nOOXXXOO\nOOOXOOO\nOOOOOOO", field3.trim())
 
-            val field4 = actorsToString(printSystem.render(4).toList())
+            val field4 = actorsToString(printSystem.render(3).toList())
             assertEquals("OOOOOOO\nOOXXXOO\nOXOOOXO\nOXOOOXO\nOXOOOXO\nOOXXXOO\nOOOOOOO", field4.trim())
         }
     }

@@ -2,6 +2,7 @@ package space.kscience.simba.akka.stream
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.javadsl.Behaviors
+import com.typesafe.config.ConfigFactory
 import space.kscience.simba.akka.AkkaEngine
 import space.kscience.simba.engine.AddNeighbour
 import space.kscience.simba.engine.Init
@@ -20,7 +21,8 @@ class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState>(
     private val init: (Vector) -> C,
 ) : AkkaEngine<Void>() {
     override val actorSystem: ActorSystem<Void> by lazy {
-        ActorSystem.create(Behaviors.empty(), "AkkaSystem")
+        // We parse here empty string as config to avoid accidental `application.conf` loading
+        ActorSystem.create(Behaviors.empty(), "AkkaSystem", ConfigFactory.parseString(""))
     }
 
     private lateinit var field: List<AkkaStreamActor<C, State>>

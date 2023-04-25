@@ -125,8 +125,9 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
 
     private fun onIterateMessage(oldState: PersistentState<C, State>, msg: Iterate): PersistentState<C, State> {
         info("Gor new iterate request", oldState)
-        if (oldState.iterations != 0) return oldState.copy(iterations = oldState.iterations + 1)
-        return forceIteration(oldState)
+        val newState = oldState.copy(iterations = oldState.iterations + 1)
+        if (oldState.iterations != 0) return newState
+        return forceIteration(newState)
     }
 
     private fun forceIteration(oldState: PersistentState<C, State>): PersistentState<C, State> {
@@ -178,11 +179,11 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
             return oldState
         }
 
-        val newState = oldState.copy(cell = msg.newCell, timestamp = oldState.timestamp + 1, iterating = false)
+        val newState = oldState.copy(
+            cell = msg.newCell, timestamp = oldState.timestamp + 1, iterating = false, iterations = oldState.iterations - 1
+        )
         info("State was updated from \"${oldState.cell.state}\" to \"${newState.cell.state}\"", oldState)
-        if (newState.iterations != 0) {
-            return forceIteration(newState.copy(iterations =  newState.iterations - 1))
-        }
+        if (newState.iterations != 0) return forceIteration(newState)
         return newState
     }
 }

@@ -14,6 +14,6 @@ object EngineFactory {
         init: (Vector) -> C,
 //        nextState: suspend (State, List<State>) -> State,
     ): Engine {
-        return AkkaActorEngine(dimensions, neighborsIndices, init, /*nextState*/)
+        return AkkaActorEngine(dimensions, neighborsIndices, init = init, /*nextState*/)
     }
 }

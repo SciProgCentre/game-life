@@ -8,6 +8,8 @@ import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.javadsl.AkkaManagement
 import akka.persistence.jdbc.testkit.javadsl.SchemaUtils
 import akka.persistence.typed.PersistenceId
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory
 import space.kscience.simba.akka.*
 import space.kscience.simba.state.Cell
 import space.kscience.simba.state.ObjectState
@@ -16,10 +18,11 @@ import space.kscience.simba.utils.Vector
 class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
+    config: Config = ConfigFactory.load(),
     val init: (Vector) -> C,
 ) : AkkaEngine<MainActorMessage>() {
     override val actorSystem: ActorSystem<MainActorMessage> by lazy {
-        ActorSystem.create(MainActor.create(this), "AkkaSystem")
+        ActorSystem.create(MainActor.create(this), "AkkaSystem", config)
     }
 
     override fun init() {

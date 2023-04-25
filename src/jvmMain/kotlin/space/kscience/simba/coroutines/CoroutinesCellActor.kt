@@ -45,7 +45,6 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         }
 
         fun forceIteration() {
-            timestamp++
             neighbours.forEach { it.handle(PassState(internalState.state, timestamp)) }
             earlyStates.remove(timestamp)?.forEach {
                 this@CoroutinesCellActor.handleWithoutResendingToEngine(PassState(it, timestamp))
@@ -68,12 +67,8 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
             internalState.addNeighboursState(msg.state)
             if (internalState.isReadyForIteration(neighbours.size)) {
                 launch {
-                    handleWithoutResendingToEngine(
-                        UpdateSelfState(
-                            internalState.iterate(iterationMap[internalState::class.java] as suspend (State, List<State>) -> State),
-                            timestamp
-                        )
-                    )
+                    val newCell = internalState.iterate(iterationMap[internalState::class.java] as suspend (State, List<State>) -> State)
+                    handleWithoutResendingToEngine(UpdateSelfState(newCell, timestamp))
                 }
             }
         }
@@ -81,8 +76,8 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
             internalState = msg.newCell
 
-            iterations--
-            if (iterations > 0) {
+            timestamp++ // Note: it is important to update `timestamp` here (and not in `launch`) to avoid race conditions
+            if (--iterations > 0) {
                 forceIteration()
             }
         }
