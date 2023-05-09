@@ -14,7 +14,7 @@ import kotlin.math.pow
 import kotlin.random.Random
 
 class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snake") {
-    private val actorsCount = 100
+    private val actorsCount = 30
     private val snake = Snake(gameSize.first, gameSize.second, seed)
 
     override val engine: Engine = createEngine()
@@ -52,6 +52,7 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snak
                 if (game.ateBait()) eatenBait++
             }
 
+            engine.iterate()
             call.respond(eatenBait to history)
         }
     }

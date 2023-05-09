@@ -14,6 +14,7 @@ import kotlinx.html.button
 import kotlinx.html.div
 import kotlinx.html.dom.append
 import kotlinx.html.id
+import kotlinx.serialization.SerialName
 import org.w3c.dom.CanvasRenderingContext2D
 import org.w3c.dom.HTMLCanvasElement
 import org.w3c.dom.HTMLElement
@@ -30,7 +31,7 @@ import space.kscience.simba.utils.Vector2
 data class SnakeState(val body: List<Vector2>, val bait: Vector2?)
 
 @kotlinx.serialization.Serializable
-data class SnakeGameState(val eatenBate: Int, val history: List<SnakeState>)
+data class SnakeGameState(@SerialName("first") val eatenBate: Int, @SerialName("second") val history: List<SnakeState>)
 
 class SnakeGame(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem {
     override val name: String = "Snake"
