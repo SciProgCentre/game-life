@@ -49,6 +49,8 @@ kotlin {
 
         val jvmMain by getting {
             dependencies {
+                implementation(files("src/jvmTest/resources"))
+
                 implementation("com.typesafe.akka:akka-actor-typed_$akkaScalaBinaryVersion:$akkaVersion")
                 implementation("com.typesafe.akka:akka-stream-typed_$akkaScalaBinaryVersion:$akkaVersion")
                 implementation("com.typesafe.akka:akka-slf4j_$akkaScalaBinaryVersion:$akkaVersion")
