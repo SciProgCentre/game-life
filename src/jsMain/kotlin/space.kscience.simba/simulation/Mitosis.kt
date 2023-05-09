@@ -30,7 +30,7 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
-    private var iteration = 1L
+    private var iteration = -1L
 
     private suspend fun getLifeData(iteration: Long): List<ActorMitosisState> {
         return jsonClient.get("$endpoint/status/mitosis/$iteration")

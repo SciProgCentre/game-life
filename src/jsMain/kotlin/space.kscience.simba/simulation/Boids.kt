@@ -52,7 +52,7 @@ class Boids(private val width: Int, private val height: Int): GameSystem {
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
-    private var iteration = 1L
+    private var iteration = -1L
     private var withAllRules = false
 
     private suspend fun getBoidsData(iteration: Long): List<ActorBoidsState> {

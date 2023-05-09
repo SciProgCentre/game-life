@@ -30,7 +30,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
-    private var iteration = 1L
+    private var iteration = -1L
 
     private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeState> {
         return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
@@ -44,13 +44,13 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
                 +"Start"
             }.onclick = {
                 (document.getElementById("next") as HTMLButtonElement).disabled = true
-                window.setInterval({ scope.launch { render(iteration++) } }, 500)
+                window.setInterval({ scope.launch { render(++iteration) } }, 500)
             }
 
             button {
                 id = "next"
                 +"Next"
-            }.onclick = { scope.launch { render(iteration++) } }
+            }.onclick = { scope.launch { render(++iteration) } }
         }
     }
 
