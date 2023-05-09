@@ -123,6 +123,8 @@ class SingleClusterEngineTest {
 
         for (i in 0L..iterations) {
             runBlocking {
+                println("Iteration #$i")
+
                 firstEngine.iterate()
                 secondEngine.iterate()
 

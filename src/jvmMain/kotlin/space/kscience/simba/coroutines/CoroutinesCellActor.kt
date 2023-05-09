@@ -15,21 +15,24 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
     // actors in coroutines can't run on different machines, so it is safe to use ref to engine here
     private val engine: CoroutinesActorEngine<C, State>,
     override val coroutineContext: CoroutineContext,
+    private val index: Int,
 ) : Actor, CoroutineScope {
-    private class Log {
-        fun debug(value: String) {
-            println(value)
+    private val debug = false
+    private inner class Log {
+        inline fun debug(value: String, time: Long) {
+            if (!debug) return
+            println("[Actor $index] [Time $time] $value")
         }
     }
 
     private val log = Log()
 
     init {
-        log.debug("Create coroutine Actor")
+        log.debug("Create coroutine Actor", 0)
     }
 
     private val actor = actor<Message> {
-        var timestamp = 0L
+        var timestamp = -1L
         var iterations = 0
         val neighbours = mutableListOf<Actor>()
         val earlyStates = linkedMapOf<Long, MutableList<State>>()
@@ -45,6 +48,12 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         }
 
         fun forceIteration() {
+            log.debug("Send current state to neighbours", timestamp)
+
+            // Note: we must advance timestamp right after iteration request and not after full iteration process.
+            // If we do it after full iteration process, we can have a situation when
+            // actor got all neighbours' messages, iterate, but never send his own state.
+            timestamp++
             neighbours.forEach { it.handle(PassState(internalState.state, timestamp)) }
             earlyStates.remove(timestamp)?.forEach {
                 this@CoroutinesCellActor.handleWithoutResendingToEngine(PassState(it, timestamp))
@@ -57,6 +66,8 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         }
 
         fun onPassStateMessage(msg: PassState<State>) {
+            log.debug("Got new message \"$msg\"", timestamp)
+
             if (msg.timestamp != timestamp) {
                 earlyStates
                     .getOrPut(msg.timestamp) { mutableListOf() }
@@ -74,11 +85,13 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         }
 
         fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
+            log.debug("State was updated from \"${internalState.state}\" to \"${msg.newCell.state}\"", timestamp)
+
             internalState = msg.newCell
 
-            timestamp++ // Note: it is important to update `timestamp` here (and not in `launch`) to avoid race conditions
-            if (--iterations > 0) {
-                forceIteration()
+            if (iterations > 0) {
+                iterations--
+                if (iterations != 0) forceIteration()
             }
         }
 

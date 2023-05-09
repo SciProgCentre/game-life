@@ -38,7 +38,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private val queue: SourceQueue<Message>
     private val subscriptions: Source<Message, NotUsed>
 
-    private var timestamp = 0L
+    private var timestamp = -1L
     private var iterations = AtomicInteger(0)
     private val neighbours = mutableListOf<SinkQueueWithCancel<Message>>()
 
@@ -97,6 +97,11 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     }
 
     private fun forceIteration() {
+        // Note: we must advance timestamp right after iteration request and not after full iteration process.
+        // If we do it after full iteration process, we can have a situation when
+        // actor got all neighbours' messages, iterate, but never send his own state.
+        timestamp++
+
         val passState = PassState(state.state, timestamp)
         handle(passState)
 
@@ -133,7 +138,6 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
     private fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
         state = msg.newCell
 
-        timestamp++ // Note: it is important to update `timestamp` here (and not in `launch`) to avoid race conditions
         if (iterations.decrementAndGet() > 0) {
             forceIteration()
         }

@@ -13,7 +13,6 @@ import akka.persistence.typed.javadsl.EventSourcedBehavior
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.slf4j.MarkerFactory
 import space.kscience.simba.akka.ActorInitialized
 import space.kscience.simba.akka.ActorMessageForward
 import space.kscience.simba.akka.MainActor
@@ -52,7 +51,7 @@ class CellActor(
 
 internal data class PersistentState<C : Cell<C, State>, State : ObjectState>(
     val cell: C,
-    val timestamp: Long = 0L,
+    val timestamp: Long = -1L,
     val iterations: Int = 0,
     val neighbours: List<Actor> = mutableListOf(),
     val earlyStates: MutableMap<Long, MutableList<State>> = linkedMapOf(),
@@ -133,9 +132,16 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
     private fun forceIteration(oldState: PersistentState<C, State>): PersistentState<C, State> {
         info("Send current state to neighbours", oldState)
 
-        oldState.neighbours.forEach { it.handle(PassState(oldState.cell.state, oldState.timestamp)) }
-        val newState = oldState.copy(earlyStates = LinkedHashMap(oldState.earlyStates.filter { it.key != oldState.timestamp }))
-        oldState.earlyStates.remove(oldState.timestamp)?.forEach {
+        // Note: we must advance timestamp right after iteration request and not after full iteration process.
+        // If we do it after full iteration process, we can have a situation when
+        // actor got all neighbours' messages, iterate, but never send his own state.
+        val newTimestamp = oldState.timestamp + 1
+        oldState.neighbours.forEach { it.handle(PassState(oldState.cell.state, newTimestamp)) }
+        val newState = oldState.copy(
+            earlyStates = LinkedHashMap(oldState.earlyStates.filter { it.key != newTimestamp }),
+            timestamp = newTimestamp
+        )
+        oldState.earlyStates.remove(newTimestamp)?.forEach {
             saveState(newState, PassState(it, newState.timestamp))
         }
         return tryToIterate(newState)
@@ -180,7 +186,7 @@ internal class EventAkkaActor<C : Cell<C, State>, State : ObjectState>(
         }
 
         val newState = oldState.copy(
-            cell = msg.newCell, timestamp = oldState.timestamp + 1, iterating = false, iterations = oldState.iterations - 1
+            cell = msg.newCell, timestamp = oldState.timestamp, iterating = false, iterations = oldState.iterations - 1
         )
         info("State was updated from \"${oldState.cell.state}\" to \"${newState.cell.state}\"", oldState)
         if (newState.iterations != 0) return forceIteration(newState)

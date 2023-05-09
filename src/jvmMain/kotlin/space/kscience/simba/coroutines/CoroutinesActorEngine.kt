@@ -41,7 +41,7 @@ class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState>(
 
         field = (0 until dimensions.product()).map { index ->
             val state = init(index.toVector(dimensions))
-            CoroutinesCellActor(this, coroutineContext).apply { this.handle(Init(state)) }
+            CoroutinesCellActor(this, coroutineContext, index).apply { this.handle(Init(state)) }
         }
 
         field.forEachIndexed { index, actorRef ->
