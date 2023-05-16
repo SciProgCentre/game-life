@@ -1,6 +1,7 @@
 package space.kscience.simba.engine
 
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import java.io.Serializable
 
@@ -14,3 +15,4 @@ class PassState<State: ObjectState>(val state: State, val timestamp: Long): Mess
     }
 }
 class UpdateSelfState<C: Cell<C, State>, State: ObjectState>(val newCell: C, val timestamp: Long): Message()
+class UpdateEnvironment<Env: EnvironmentState>(val env: Env): Message()

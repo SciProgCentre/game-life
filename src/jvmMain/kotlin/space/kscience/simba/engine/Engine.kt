@@ -1,11 +1,14 @@
 package space.kscience.simba.engine
 
-interface Engine {
+import space.kscience.simba.state.EnvironmentState
+
+interface Engine<Env: EnvironmentState> {
     var started: Boolean
     val systems: MutableList<EngineSystem>
 
     fun init()
     fun iterate()
+    fun setNewEnvironment(env: Env)
 
     fun addNewSystem(system: EngineSystem) {
         if (started) throw AssertionError("Cannot add new system because engine already started to work")

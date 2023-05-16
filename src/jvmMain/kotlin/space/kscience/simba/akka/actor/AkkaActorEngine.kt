@@ -12,15 +12,16 @@ import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import space.kscience.simba.akka.*
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 
-class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
+class AkkaActorEngine<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     config: Config = ConfigFactory.load(),
     val init: (Vector) -> C,
-) : AkkaEngine<MainActorMessage>() {
+) : AkkaEngine<MainActorMessage, Env>() {
     override val actorSystem: ActorSystem<MainActorMessage> by lazy {
         ActorSystem.create(MainActor.create(this), "AkkaSystem", config)
     }
@@ -39,7 +40,7 @@ class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
         clusterSharding.init(
             Entity.of(CellActor.ENTITY_TYPE) { entityContext ->
                 Behaviors.setup {
-                    EventAkkaActor<C, State>(
+                    EventAkkaActor<C, State, Env>(
                         it, entityContext.entityId, PersistenceId.of(entityContext.entityTypeKey.name(), entityContext.entityId)
                     )
                 }
@@ -58,5 +59,9 @@ class AkkaActorEngine<C: Cell<C, State>, State: ObjectState>(
 
     override fun onIterate() {
         actorSystem.tell(SyncIterate)
+    }
+
+    override fun setNewEnvironment(env: Env) {
+        actorSystem.tell(PassNewEnvironment(env))
     }
 }

@@ -6,6 +6,7 @@ import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.ActorBoidsCell
 import space.kscience.simba.state.ActorBoidsState
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.systems.PrintSystem
 import space.kscience.simba.utils.*
 import kotlin.random.Random
@@ -27,14 +28,14 @@ private object BoidsSettings {
     const val applyAllRules = true
 }
 
-class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState>("boids") {
+class BoidsSimulation: Simulation<ActorBoidsCell, ActorBoidsState, EnvironmentState>("boids") {
     private val random = Random(0)
     private val n = 100
 
     private val neighbours = (1 until n).map { intArrayOf(it) }.toSet()
     private var withAllRules = false
 
-    override val engine: Engine = EngineFactory.createEngine(intArrayOf(n), neighbours) {
+    override val engine: Engine<EnvironmentState> = EngineFactory.createEngine(intArrayOf(n), neighbours) {
         ActorBoidsCell(it[0], random.randomBoidsState())
     }
     override val printSystem: PrintSystem<ActorBoidsState> = PrintSystem(n)

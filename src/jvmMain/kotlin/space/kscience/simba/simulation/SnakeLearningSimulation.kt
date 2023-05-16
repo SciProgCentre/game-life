@@ -13,11 +13,11 @@ import space.kscience.simba.utils.isInsideBox
 import kotlin.math.pow
 import kotlin.random.Random
 
-class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snake") {
+class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState, EnvironmentState>("snake") {
     private val actorsCount = 30
     private val snake = Snake(gameSize.first, gameSize.second, seed)
 
-    override val engine: Engine = createEngine()
+    override val engine: Engine<EnvironmentState> = createEngine()
     override val printSystem: PrintSystem<ActorSnakeState> = PrintSystem(actorsCount)
 
     init {
@@ -26,7 +26,7 @@ class SnakeLearningSimulation: Simulation<ActorSnakeCell, ActorSnakeState>("snak
         engine.iterate()
     }
 
-    private fun createEngine(): Engine {
+    private fun createEngine(): Engine<EnvironmentState> {
         return EngineFactory.createEngine(
             intArrayOf(actorsCount),
             (1 until actorsCount).map { intArrayOf(it) }.toSet(),

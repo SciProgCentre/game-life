@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
 import space.kscience.simba.simulation.iterationMap
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
@@ -27,11 +28,13 @@ import kotlin.coroutines.CoroutineContext
  * actor will suspend. The problem wit such approach is that we can wait for slow agent while there are already
  * some data to analyze.
  */
-class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
+class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
     private val system: ActorSystem<Void>,
-    private val engine: AkkaStreamEngine<C, State>,
+    private val engine: AkkaStreamEngine<C, State, Env>,
 ): Actor, CoroutineScope {
     private lateinit var state: C
+    private var environment: Env? = null
+
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
     private val log = system.log()
 
@@ -72,13 +75,14 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
                 is Iterate -> onIterateMessage(msg)
                 is PassState<*> -> Unit
                 is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<C, State>)
+                is UpdateEnvironment<*> -> onUpdateEnvironment(msg as UpdateEnvironment<Env>)
             }
         }, system)
     }
 
     @Suppress("UNCHECKED_CAST")
     private fun onAddNeighbourMessage(msg: AddNeighbour) {
-        neighbours += (msg.cellActor as AkkaStreamActor<C, State>).subscriptions.runWith(Sink.queue<Message>(), system)
+        neighbours += (msg.cellActor as AkkaStreamActor<C, State, Env>).subscriptions.runWith(Sink.queue<Message>(), system)
         engine.subscribedToNeighbour(this)
     }
 
@@ -141,5 +145,9 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState>(
         if (iterations.decrementAndGet() > 0) {
             forceIteration()
         }
+    }
+
+    private fun onUpdateEnvironment(msg: UpdateEnvironment<Env>) {
+        environment = msg.env
     }
 }

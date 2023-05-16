@@ -3,8 +3,9 @@ package space.kscience.simba.akka
 import akka.actor.typed.ActorSystem
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.engine.EngineSystem
+import space.kscience.simba.state.EnvironmentState
 
-abstract class AkkaEngine<T> : Engine {
+abstract class AkkaEngine<T, Env: EnvironmentState> : Engine<Env> {
     protected abstract val actorSystem: ActorSystem<T>
 
     override var started: Boolean = false

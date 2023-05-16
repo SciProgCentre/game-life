@@ -9,11 +9,9 @@ import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.EntityRef
 import org.slf4j.MarkerFactory
 import space.kscience.simba.akka.actor.CellActor
-import space.kscience.simba.engine.AddNeighbour
-import space.kscience.simba.engine.Init
-import space.kscience.simba.engine.Iterate
-import space.kscience.simba.engine.Message
+import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
@@ -30,10 +28,11 @@ class SpawnCells<C: Cell<C, State>, State: ObjectState>(
 class ActorInitialized(val id: String): MainActorMessage()
 object SyncIterate: MainActorMessage()
 class ActorMessageForward(val content: Message): MainActorMessage()
+class PassNewEnvironment<Env: EnvironmentState>(val env: Env): MainActorMessage()
 
-class MainActor private constructor(
+class MainActor<Env: EnvironmentState> private constructor(
     context: ActorContext<MainActorMessage>,
-    private val engine: AkkaEngine<MainActorMessage>
+    private val engine: AkkaEngine<MainActorMessage, Env>
 ): AbstractBehavior<MainActorMessage>(context) {
     private val log = context.log
     private lateinit var neighborsIndices: Set<Vector>
@@ -47,6 +46,7 @@ class MainActor private constructor(
             .onMessage(SyncIterate::class.java, ::onSyncIterate)
             .onMessage(ActorInitialized::class.java, ::onActorInitialized)
             .onMessage(ActorMessageForward::class.java, ::onActorMessageForward)
+            .onMessage(PassNewEnvironment::class.java, { onPassNewEnvironment(it as PassNewEnvironment<Env>) })
             .build()
     }
 
@@ -78,7 +78,7 @@ class MainActor private constructor(
         }
     }
 
-    private fun <C: Cell<C, State>, State: ObjectState> onSpawnCells(msg: SpawnCells<C, State>): MainActor {
+    private fun <C: Cell<C, State>, State: ObjectState> onSpawnCells(msg: SpawnCells<C, State>): MainActor<Env> {
         neighborsIndices = msg.neighborsIndices
         dimensions = msg.dimensions
 
@@ -87,13 +87,13 @@ class MainActor private constructor(
         return this
     }
 
-    private fun onSyncIterate(msg: SyncIterate): MainActor {
+    private fun onSyncIterate(msg: SyncIterate): MainActor<Env> {
         log.info(logMarker, "[Main] New iterate request")
         tellEachEntity { Iterate() }
         return this
     }
 
-    private fun onActorInitialized(msg: ActorInitialized): MainActor {
+    private fun onActorInitialized(msg: ActorInitialized): MainActor<Env> {
         log.info(logMarker, "[Main] Initialized actor with ID ${msg.id}")
         if (++initializedCount == dimensions.product()) {
             log.info(logMarker, "[Main] All actors are initialized. Start engine.")
@@ -107,15 +107,20 @@ class MainActor private constructor(
         return this
     }
 
-    private fun onActorMessageForward(msg: ActorMessageForward): MainActor {
+    private fun onActorMessageForward(msg: ActorMessageForward): MainActor<Env> {
         engine.processWithSystems(msg.content)
+        return this
+    }
+
+    private fun onPassNewEnvironment(msg: PassNewEnvironment<Env>): MainActor<Env> {
+        tellEachEntity { UpdateEnvironment(msg.env) }
         return this
     }
 
     companion object {
         internal val logMarker = MarkerFactory.getMarker("actor")
 
-        fun create(engine: AkkaEngine<MainActorMessage>): Behavior<MainActorMessage> {
+        fun <Env: EnvironmentState> create(engine: AkkaEngine<MainActorMessage, Env>): Behavior<MainActorMessage> {
             return Behaviors.setup {
                 MainActor(it, engine)
             }

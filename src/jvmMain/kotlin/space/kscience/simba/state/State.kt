@@ -6,21 +6,17 @@ import java.io.Serializable
 
 interface ObjectState : Serializable
 
+interface EnvironmentState: Serializable
+
 @kotlinx.serialization.Serializable
 abstract class Cell<Self : Cell<Self, State>, State : ObjectState> : Comparable<Self>, Serializable {
     abstract val vectorId: Vector
     abstract val state: State
-//    @kotlinx.serialization.Transient
     private val neighbours: MutableList<State> = mutableListOf()
-
-//    constructor(vectorId: Vector, state: State) {
-//        this.vectorId = vectorId
-//        this.state = state
-//    }
 
     open fun isReadyForIteration(expectedCount: Int): Boolean = neighbours.size == expectedCount
     open fun addNeighboursState(state: State) { neighbours += state }
-    open suspend fun iterate(convertState: suspend (State, List<State>) -> State): Self { TODO("Not implemented") }
+    abstract suspend fun iterate(convertState: suspend (State, List<State>) -> State): Self
 
     protected fun getNeighboursStates() = neighbours
 

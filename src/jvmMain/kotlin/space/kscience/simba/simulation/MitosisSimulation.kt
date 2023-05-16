@@ -4,6 +4,7 @@ import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.ActorMitosisCell
 import space.kscience.simba.state.ActorMitosisState
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.gameOfLifeNeighbours
 import space.kscience.simba.systems.PrintSystem
 import space.kscience.simba.utils.Vector
@@ -12,12 +13,12 @@ import kotlin.math.pow
 import kotlin.random.Random
 
 // original work https://github.com/MaxRobinsonTheGreat/NeuralPatterns
-class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState>("mitosis") {
+class MitosisSimulation: Simulation<ActorMitosisCell, ActorMitosisState, EnvironmentState>("mitosis") {
     private val random = Random(0)
     private val n = 100
     private val m = 100
 
-    override val engine: Engine = EngineFactory.createEngine(
+    override val engine: Engine<EnvironmentState> = EngineFactory.createEngine(
         intArrayOf(n, m), gameOfLifeNeighbours, ::nextCell
     )
 

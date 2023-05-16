@@ -3,6 +3,7 @@ package space.kscience.simba.coroutines
 import kotlinx.coroutines.CoroutineScope
 import space.kscience.simba.engine.*
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
@@ -11,11 +12,11 @@ import space.kscience.simba.utils.toVector
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState>(
+class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> C,
-): Engine, CoroutineScope {
+): Engine<Env>, CoroutineScope {
     private lateinit var field: List<Actor>
 
     override val coroutineContext: CoroutineContext
@@ -53,6 +54,10 @@ class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState>(
 
     override fun iterate() {
         field.forEach { it.handle(Iterate()) }
+    }
+
+    override fun setNewEnvironment(env: Env) {
+        field.forEach { it.handle(UpdateEnvironment(env)) }
     }
 
     internal fun processActorMessage(msg: Message) {

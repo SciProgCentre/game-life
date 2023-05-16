@@ -6,12 +6,12 @@ import space.kscience.simba.state.*
 import space.kscience.simba.systems.PrintSystem
 import kotlin.random.Random
 
-class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState>("gameOfLife") {
+class GameOfLifeSimulation: Simulation<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>("gameOfLife") {
     private val random = Random(0)
     private val n = 10
     private val m = 10
 
-    override val engine: Engine = EngineFactory.createEngine(
+    override val engine: Engine<EnvironmentState> = EngineFactory.createEngine(
         intArrayOf(n, m), gameOfLifeNeighbours, { (i, j) -> classicCell(i, j, random.nextBoolean()) }, //::actorNextStep
     )
 

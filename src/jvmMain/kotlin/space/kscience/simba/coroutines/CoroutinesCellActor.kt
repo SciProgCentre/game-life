@@ -7,13 +7,14 @@ import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
 import space.kscience.simba.simulation.iterationMap
 import space.kscience.simba.state.Cell
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
-class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
+class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
     // actors in coroutines can't run on different machines, so it is safe to use ref to engine here
-    private val engine: CoroutinesActorEngine<C, State>,
+    private val engine: CoroutinesActorEngine<C, State, Env>,
     override val coroutineContext: CoroutineContext,
     private val index: Int,
 ) : Actor, CoroutineScope {
@@ -38,6 +39,7 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
         val earlyStates = linkedMapOf<Long, MutableList<State>>()
 
         lateinit var internalState: C
+        var env: Env? = null
 
         fun onInit(msg: Init<C, State>) {
             internalState = msg.state
@@ -95,6 +97,10 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
             }
         }
 
+        fun onUpdateEnvironment(msg: UpdateEnvironment<Env>) {
+            env = msg.env
+        }
+
         @Suppress("UNCHECKED_CAST")
         for (msg in channel) { // iterate over incoming messages
             when (msg) {
@@ -103,6 +109,7 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState>(
                 is Iterate -> onIterateMessage(msg)
                 is PassState<*> -> onPassStateMessage(msg as PassState<State>)
                 is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<C, State>)
+                is UpdateEnvironment<*> -> onUpdateEnvironment(msg as UpdateEnvironment<Env>)
             }
         }
     }
