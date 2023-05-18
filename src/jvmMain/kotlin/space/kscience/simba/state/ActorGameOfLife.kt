@@ -10,7 +10,24 @@ val gameOfLifeNeighbours: Set<Vector> = setOf(
 )
 
 @kotlinx.serialization.Serializable
-data class ActorGameOfLifeState(val i: Int, val j: Int, val isAlive: Boolean) : ObjectState, Comparable<ActorGameOfLifeState> {
+data class ActorGameOfLifeState(val i: Int, val j: Int, val isAlive: Boolean) : ObjectState<ActorGameOfLifeState, EnvironmentState>, Comparable<ActorGameOfLifeState> {
+    override suspend fun iterate(neighbours: List<ActorGameOfLifeState>, env: EnvironmentState?): ActorGameOfLifeState {
+        val aliveNeighbours = neighbours.count { it.isAlive }
+        if (this.isAlive) {
+            if (aliveNeighbours != 2 && aliveNeighbours != 3) {
+                return ActorGameOfLifeState(this.i, this.j, false)
+            }
+        } else if (aliveNeighbours == 3) {
+            return ActorGameOfLifeState(this.i, this.j, true)
+        }
+
+        return this
+    }
+
+    override fun isReadyForIteration(neighbours: List<ActorGameOfLifeState>, env: EnvironmentState?, expectedCount: Int): Boolean {
+        return neighbours.size == expectedCount
+    }
+
     override fun compareTo(other: ActorGameOfLifeState): Int {
         return intArrayOf(i, j).compareTo(intArrayOf(other.i, other.j))
     }
@@ -20,41 +37,7 @@ data class ActorGameOfLifeState(val i: Int, val j: Int, val isAlive: Boolean) : 
     }
 }
 
-data class ActorGameOfLifeCell(
-    val i: Int, val j: Int,
-    override val state: ActorGameOfLifeState,
-) : Cell<ActorGameOfLifeCell, ActorGameOfLifeState>() {
-    override val vectorId: Vector = intArrayOf(i, j)
-
-    override suspend fun iterate(
-        convertState: suspend (ActorGameOfLifeState, List<ActorGameOfLifeState>) -> ActorGameOfLifeState
-    ): ActorGameOfLifeCell {
-        return ActorGameOfLifeCell(i, j, convertState(state, getNeighboursStates()))
-    }
-
-    fun isAlive(): Boolean {
-        return state.isAlive
-    }
-
-    override fun toString(): String {
-        return "($i, $j) = ${state.isAlive}"
-    }
-}
-
-fun classicCell(i: Int, j: Int, state: Boolean) = ActorGameOfLifeCell(i, j, ActorGameOfLifeState(i, j, state))
-
-suspend fun actorNextStep(state: ActorGameOfLifeState, neighbours: List<ActorGameOfLifeState>): ActorGameOfLifeState {
-    val aliveNeighbours = neighbours.count { it.isAlive }
-    if (state.isAlive) {
-        if (aliveNeighbours != 2 && aliveNeighbours != 3) {
-            return ActorGameOfLifeState(state.i, state.j, false)
-        }
-    } else if (aliveNeighbours == 3) {
-        return ActorGameOfLifeState(state.i, state.j, true)
-    }
-
-    return state
-}
+fun classicState(i: Int, j: Int, state: Boolean) = ActorGameOfLifeState(i, j, state)
 
 fun actorsToString(field: List<ActorGameOfLifeState>): String {
     val builder = StringBuilder()

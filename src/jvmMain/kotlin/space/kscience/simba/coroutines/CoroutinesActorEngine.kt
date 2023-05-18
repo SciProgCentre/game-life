@@ -2,9 +2,7 @@ package space.kscience.simba.coroutines
 
 import kotlinx.coroutines.CoroutineScope
 import space.kscience.simba.engine.*
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
+import space.kscience.simba.state.*
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
 import space.kscience.simba.utils.toIndex
@@ -12,10 +10,10 @@ import space.kscience.simba.utils.toVector
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
-class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
+class CoroutinesActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
-    private val init: (Vector) -> C,
+    private val init: (Vector) -> State,
 ): Engine<Env>, CoroutineScope {
     private lateinit var field: List<Actor>
 
@@ -41,8 +39,9 @@ class CoroutinesActorEngine<C: Cell<C, State>, State: ObjectState, Env: Environm
         }
 
         field = (0 until dimensions.product()).map { index ->
-            val state = init(index.toVector(dimensions))
-            CoroutinesCellActor(this, coroutineContext, index).apply { this.handle(Init(state)) }
+            val vector = index.toVector(dimensions)
+            val state = init(vector)
+            CoroutinesCellActor(this, coroutineContext).apply { this.handle(Init(vector, state)) }
         }
 
         field.forEachIndexed { index, actorRef ->

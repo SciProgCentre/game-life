@@ -10,9 +10,7 @@ import akka.cluster.sharding.typed.javadsl.EntityRef
 import org.slf4j.MarkerFactory
 import space.kscience.simba.akka.actor.CellActor
 import space.kscience.simba.engine.*
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
+import space.kscience.simba.state.*
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
 import space.kscience.simba.utils.toIndex
@@ -20,10 +18,10 @@ import space.kscience.simba.utils.toVector
 import java.io.Serializable
 
 sealed class MainActorMessage: Serializable
-class SpawnCells<C: Cell<C, State>, State: ObjectState>(
+class SpawnCells<State: ObjectState<State, Env>, Env: EnvironmentState>(
     val dimensions: Vector,
     val neighborsIndices: Set<Vector>,
-    val init: (Vector) -> C,
+    val init: (Vector) -> State,
 ): MainActorMessage()
 class ActorInitialized(val id: String): MainActorMessage()
 object SyncIterate: MainActorMessage()
@@ -78,11 +76,15 @@ class MainActor<Env: EnvironmentState> private constructor(
         }
     }
 
-    private fun <C: Cell<C, State>, State: ObjectState> onSpawnCells(msg: SpawnCells<C, State>): MainActor<Env> {
+    // TODO simplify
+    private fun <State: ObjectState<State, E>, E: EnvironmentState> onSpawnCells(msg: SpawnCells<State, E>): MainActor<Env> {
         neighborsIndices = msg.neighborsIndices
         dimensions = msg.dimensions
 
-        tellEachEntity { index -> Init(msg.init(index.toVector(msg.dimensions))) }
+        tellEachEntity { index ->
+            val vector = index.toVector(msg.dimensions)
+            Init(vector, msg.init(vector))
+        }
 
         return this
     }

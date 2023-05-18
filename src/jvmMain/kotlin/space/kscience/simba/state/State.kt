@@ -2,25 +2,36 @@ package space.kscience.simba.state
 
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.compareTo
-import java.io.Serializable
 
-interface ObjectState : Serializable
+interface ObjectState<Self: ObjectState<Self, E>, E: EnvironmentState> {
+    suspend fun iterate(neighbours: List<Self>, env: E?): Self
+    fun isReadyForIteration(neighbours: List<Self>, env: E?, expectedCount: Int): Boolean
+}
 
-interface EnvironmentState: Serializable
+interface EnvironmentState
 
-@kotlinx.serialization.Serializable
-abstract class Cell<Self : Cell<Self, State>, State : ObjectState> : Comparable<Self>, Serializable {
-    abstract val vectorId: Vector
-    abstract val state: State
-    private val neighbours: MutableList<State> = mutableListOf()
+// TODO
+//  1. try to isolate Cell from State and Env.
+//      1.1 must decide that to do with `neighbours`
+//      1.2 must decide that to do with `isReadyForIteration`
+//  2. pass Env to iterate method
+//     2.1 problem: ObjectState will be connected with Env.
+//     BUT maybe it is good, because we will set it once in ObjectState and everything else type system will do
+class Cell<S: ObjectState<S, E>, E: EnvironmentState>(val vectorId: Vector, val state: S) : Comparable<Cell<S, E>> {
+    private var neighbours: MutableList<S> = mutableListOf()
 
-    open fun isReadyForIteration(expectedCount: Int): Boolean = neighbours.size == expectedCount
-    open fun addNeighboursState(state: State) { neighbours += state }
-    abstract suspend fun iterate(convertState: suspend (State, List<State>) -> State): Self
+    fun addNeighboursState(state: S) { neighbours += state }
 
-    protected fun getNeighboursStates() = neighbours
+    fun isReadyForIteration(env: E?, expectedCount: Int): Boolean {
+        return state.isReadyForIteration(neighbours, env, expectedCount)
+    }
 
-    override fun compareTo(other: Self): Int {
+    // TODO reconsider
+    suspend fun iterate(env: E?): Cell<S, E> {
+        return Cell(vectorId, state.iterate(neighbours, env))
+    }
+
+    override fun compareTo(other: Cell<S, E>): Int {
         return vectorId.compareTo(other.vectorId)
     }
 

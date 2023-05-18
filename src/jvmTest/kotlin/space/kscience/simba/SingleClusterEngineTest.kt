@@ -20,9 +20,9 @@ class SingleClusterEngineTest {
 
     private val testLocalConfig = ConfigFactory.load("local1_test.conf")
 
-    private fun fillSquare(vector: Vector): ActorGameOfLifeCell {
+    private fun fillSquare(vector: Vector): ActorGameOfLifeState {
         val (i, j) = vector
-        return classicCell(i, j, i in 2..4 && j in 2..4)
+        return classicState(i, j, i in 2..4 && j in 2..4)
     }
 
     @After
@@ -32,7 +32,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testAkkaGameOfLife() {
-        val simulationEngine = AkkaActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = AkkaActorEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
         )
         checkEngineCorrectness(simulationEngine)
@@ -40,7 +40,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testAkkaGameOfLifeAfterIterations() {
-        val simulationEngine = AkkaActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = AkkaActorEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
         )
         checkEngineCorrectnessAfterIterations(simulationEngine)
@@ -48,7 +48,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testKotlinActorsGameOfLife() {
-        val simulationEngine = CoroutinesActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = CoroutinesActorEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare
         )
         checkEngineCorrectness(simulationEngine)
@@ -56,7 +56,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testKotlinActorsGameOfLifeAfterIterations() {
-        val simulationEngine = CoroutinesActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = CoroutinesActorEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare
         )
         checkEngineCorrectnessAfterIterations(simulationEngine)
@@ -64,7 +64,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testAkkaStreamGameOfLife() {
-        val simulationEngine = AkkaStreamEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = AkkaStreamEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare
         )
         checkEngineCorrectness(simulationEngine)
@@ -72,7 +72,7 @@ class SingleClusterEngineTest {
 
     @Test
     fun testAkkaStreamGameOfLifeAfterIterations() {
-        val simulationEngine = AkkaStreamEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val simulationEngine = AkkaStreamEngine(
             intArrayOf(n, m), gameOfLifeNeighbours, ::fillSquare
         )
         checkEngineCorrectnessAfterIterations(simulationEngine)
@@ -86,15 +86,15 @@ class SingleClusterEngineTest {
         val bigN = 100
         val bigM = 100
 
-        val akkaEngine = AkkaActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val akkaEngine = AkkaActorEngine(
             intArrayOf(bigN, bigM),
             gameOfLifeNeighbours,
             testLocalConfig,
-        ) { (i, j) -> classicCell(i, j, random1.nextBoolean()) }
-        val coroutinesEngine = CoroutinesActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        ) { (i, j) -> classicState(i, j, random1.nextBoolean()) }
+        val coroutinesEngine = CoroutinesActorEngine(
             intArrayOf(bigN, bigM),
             gameOfLifeNeighbours
-        ) { (i, j) -> classicCell(i, j, random2.nextBoolean()) }
+        ) { (i, j) -> classicState(i, j, random2.nextBoolean()) }
 
         checkEnginesEquality(akkaEngine, coroutinesEngine, bigM * bigN, 10)
     }
@@ -108,24 +108,24 @@ class SingleClusterEngineTest {
         val bigN = 10
         val bigM = 10
 
-        val akkaEngine = AkkaActorEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        val akkaEngine = AkkaActorEngine(
             intArrayOf(bigN, bigM),
             gameOfLifeNeighbours,
             testLocalConfig,
-        ) { (i, j) -> classicCell(i, j, random1.nextBoolean()) }
-        val akkaStreamEngine = AkkaStreamEngine<ActorGameOfLifeCell, ActorGameOfLifeState, EnvironmentState>(
+        ) { (i, j) -> classicState(i, j, random1.nextBoolean()) }
+        val akkaStreamEngine = AkkaStreamEngine(
             intArrayOf(bigN, bigM),
             gameOfLifeNeighbours
-        ) { (i, j) -> classicCell(i, j, random2.nextBoolean()) }
+        ) { (i, j) -> classicState(i, j, random2.nextBoolean()) }
         checkEnginesEquality(akkaEngine, akkaStreamEngine, bigM * bigN, 1000)
     }
 
     private fun checkEnginesEquality(firstEngine: Engine<*>, secondEngine: Engine<*>, size: Int, iterations: Int) {
-        val firstPrintSystem = PrintSystem<ActorGameOfLifeState>(size)
+        val firstPrintSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(size)
         firstEngine.addNewSystem(firstPrintSystem)
         firstEngine.init()
 
-        val secondPrintSystem = PrintSystem<ActorGameOfLifeState>(size)
+        val secondPrintSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(size)
         secondEngine.addNewSystem(secondPrintSystem)
         secondEngine.init()
 
@@ -146,7 +146,7 @@ class SingleClusterEngineTest {
 
     @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectness(simulationEngine: Engine<*>) {
-        val printSystem = PrintSystem<ActorGameOfLifeState>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(n * m)
         simulationEngine.addNewSystem(printSystem)
         simulationEngine.init()
 
@@ -171,7 +171,7 @@ class SingleClusterEngineTest {
 
     @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine<*>) {
-        val printSystem = PrintSystem<ActorGameOfLifeState>(n * m)
+        val printSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(n * m)
         simulationEngine.addNewSystem(printSystem)
         simulationEngine.init()
 

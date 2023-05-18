@@ -5,22 +5,19 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
-import space.kscience.simba.simulation.iterationMap
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
+import space.kscience.simba.state.*
+import space.kscience.simba.utils.Vector
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
-class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
+class CoroutinesCellActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
     // actors in coroutines can't run on different machines, so it is safe to use ref to engine here
-    private val engine: CoroutinesActorEngine<C, State, Env>,
+    private val engine: CoroutinesActorEngine<State, Env>,
     override val coroutineContext: CoroutineContext,
-    private val index: Int,
 ) : Actor, CoroutineScope {
     private val debug = false
     private inner class Log {
-        inline fun debug(value: String, time: Long) {
+        inline fun debug(value: String, time: Long, index: Vector) {
             if (!debug) return
             println("[Actor $index] [Time $time] $value")
         }
@@ -29,7 +26,7 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
     private val log = Log()
 
     init {
-        log.debug("Create coroutine Actor", 0)
+        log.debug("Create coroutine Actor", 0, Vector(0))
     }
 
     private val actor = actor<Message> {
@@ -38,11 +35,11 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
         val neighbours = mutableListOf<Actor>()
         val earlyStates = linkedMapOf<Long, MutableList<State>>()
 
-        lateinit var internalState: C
+        lateinit var internalState: Cell<State, Env>
         var env: Env? = null
 
-        fun onInit(msg: Init<C, State>) {
-            internalState = msg.state
+        fun onInit(msg: Init<State, Env>) {
+            internalState = Cell(msg.index, msg.state)
         }
 
         fun onAddNeighbourMessage(msg: AddNeighbour) {
@@ -50,7 +47,7 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
         }
 
         fun forceIteration() {
-            log.debug("Send current state to neighbours", timestamp)
+            log.debug("Send current state to neighbours", timestamp, internalState.vectorId)
 
             // Note: we must advance timestamp right after iteration request and not after full iteration process.
             // If we do it after full iteration process, we can have a situation when
@@ -67,8 +64,8 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
             forceIteration()
         }
 
-        fun onPassStateMessage(msg: PassState<State>) {
-            log.debug("Got new message \"$msg\"", timestamp)
+        fun onPassStateMessage(msg: PassState<State, Env>) {
+            log.debug("Got new message \"$msg\"", timestamp, internalState.vectorId)
 
             if (msg.timestamp != timestamp) {
                 earlyStates
@@ -78,18 +75,18 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
             }
 
             internalState.addNeighboursState(msg.state)
-            if (internalState.isReadyForIteration(neighbours.size)) {
+            if (internalState.isReadyForIteration(env, neighbours.size)) {
                 launch {
-                    val newCell = internalState.iterate(iterationMap[internalState::class.java] as suspend (State, List<State>) -> State)
-                    handleWithoutResendingToEngine(UpdateSelfState(newCell, timestamp))
+                    val newCell = internalState.iterate(env)
+                    handleWithoutResendingToEngine(UpdateSelfState(newCell.state, timestamp))
                 }
             }
         }
 
-        fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
-            log.debug("State was updated from \"${internalState.state}\" to \"${msg.newCell.state}\"", timestamp)
+        fun onUpdateSelfState(msg: UpdateSelfState<State, Env>) {
+            log.debug("State was updated from \"${internalState.state}\" to \"${msg.newState}\"", timestamp, internalState.vectorId)
 
-            internalState = msg.newCell
+            internalState = Cell(internalState.vectorId, msg.newState)
 
             if (iterations > 0) {
                 iterations--
@@ -104,11 +101,11 @@ class CoroutinesCellActor<C: Cell<C, State>, State: ObjectState, Env: Environmen
         @Suppress("UNCHECKED_CAST")
         for (msg in channel) { // iterate over incoming messages
             when (msg) {
-                is Init<*, *> -> onInit(msg as Init<C, State>)
+                is Init<*, *> -> onInit(msg as Init<State, Env>)
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState<*> -> onPassStateMessage(msg as PassState<State>)
-                is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<C, State>)
+                is PassState<*, *> -> onPassStateMessage(msg as PassState<State, Env>)
+                is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<State, Env>)
                 is UpdateEnvironment<*> -> onUpdateEnvironment(msg as UpdateEnvironment<Env>)
             }
         }

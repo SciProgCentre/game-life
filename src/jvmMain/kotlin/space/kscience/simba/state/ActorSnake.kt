@@ -1,32 +1,61 @@
 package space.kscience.simba.state
 
 import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
-import space.kscience.simba.utils.Vector
+import space.kscience.simba.simulation.SnakeLearningSimulation
 import space.kscience.simba.utils.Vector2
+import space.kscience.simba.utils.isInsideBox
 import java.io.Serializable
+import kotlin.math.pow
 import kotlin.random.Random
 
 @kotlinx.serialization.Serializable
-data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeAction>, val iteration: Long) : ObjectState
-
-data class ActorSnakeCell(
-    val id: Int,
-    override val state: ActorSnakeState,
-) : Cell<ActorSnakeCell, ActorSnakeState>() {
-    override val vectorId: Vector = intArrayOf(id)
-
-    override fun isReadyForIteration(expectedCount: Int): Boolean {
-        return if (id == 0) {
-            super.isReadyForIteration(expectedCount)
+data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeAction>, val iteration: Long) : ObjectState<ActorSnakeState, EnvironmentState> {
+    override suspend fun iterate(neighbours: List<ActorSnakeState>, env: EnvironmentState?): ActorSnakeState {
+        val combinedState = if (neighbours.none { it.id == 0 }) {
+            val stateCopy = ActorSnakeState(this.id, this.table.deepCopy(), this.iteration)
+            for (cell in neighbours) {
+                stateCopy.table.combine(cell.table)
+            }
+            stateCopy
         } else {
-            getNeighboursStates().any { it.id == 0 }
+            ActorSnakeState(this.id, neighbours.first { it.id == 0 }.table.deepCopy(), this.iteration)
         }
+
+        val snakeGame = Snake(SnakeLearningSimulation.gameSize.first, SnakeLearningSimulation.gameSize.second, SnakeLearningSimulation.random.nextInt())
+        snakeGame.train(
+            SnakeLearningSimulation.random, combinedState.table,
+            SnakeLearningSimulation.maxIterations,
+            SnakeLearningSimulation.trainProbability
+        ) { calculateReward(it) }
+
+        return combinedState
     }
 
-    override suspend fun iterate(
-        convertState: suspend (ActorSnakeState, List<ActorSnakeState>) -> ActorSnakeState
-    ): ActorSnakeCell {
-        return ActorSnakeCell(id, convertState(state, getNeighboursStates()))
+    private fun Snake.calculateReward(oldState: SnakeState): Double {
+        val headPosition = getHeadPosition()
+        val baitPosition = getBaitPosition() ?: return 1.0 // best score
+
+        if (!headPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
+        if (!baitPosition.isInsideBox(width.toDouble(), height.toDouble())) return 0.0
+
+        fun getDistanceToBait(head: Vector2): Double {
+            val x = (baitPosition.first - head.first)
+            val y = (baitPosition.second - head.second)
+            return ((x / width).pow(2) + (y / height).pow(2))
+        }
+
+        val currentDistance = getDistanceToBait(headPosition)
+        val oldDistance = getDistanceToBait(oldState.body.last())
+
+        return if (currentDistance < oldDistance) return 1.0 else -1.0
+    }
+
+    override fun isReadyForIteration(neighbours: List<ActorSnakeState>, env: EnvironmentState?, expectedCount: Int): Boolean {
+        return if (id == 0) {
+            neighbours.size == expectedCount
+        } else {
+            neighbours.any { it.id == 0 }
+        }
     }
 }
 

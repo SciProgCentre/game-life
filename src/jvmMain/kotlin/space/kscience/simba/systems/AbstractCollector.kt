@@ -7,19 +7,20 @@ import kotlinx.coroutines.launch
 import space.kscience.simba.engine.EngineSystem
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
+import space.kscience.simba.state.EnvironmentState
 import space.kscience.simba.state.ObjectState
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-abstract class AbstractCollector<State : ObjectState> : EngineSystem, CoroutineScope {
+abstract class AbstractCollector<State: ObjectState<State, Env>, Env: EnvironmentState> : EngineSystem, CoroutineScope {
     override val coroutineContext = Dispatchers.Unconfined
 
     private val statesByTimestamp = mutableMapOf<Long, MutableSet<State>>()
     private val continuations = mutableListOf<Pair<Long, Continuation<Set<State>>>>()
     private val lock = Object()
 
-    private val channel = Channel<PassState<State>>()
+    private val channel = Channel<PassState<State, Env>>()
 
     init {
         launch {
@@ -40,8 +41,8 @@ abstract class AbstractCollector<State : ObjectState> : EngineSystem, CoroutineS
 
     @Suppress("UNCHECKED_CAST")
     override fun process(msg: Message) {
-        if (msg is PassState<*>) {
-            launch { channel.send(msg as PassState<State>) }
+        if (msg is PassState<*, *>) {
+            launch { channel.send(msg as PassState<State, Env>) }
         }
     }
 

@@ -8,32 +8,32 @@ import space.kscience.simba.engine.AddNeighbour
 import space.kscience.simba.engine.Init
 import space.kscience.simba.engine.Iterate
 import space.kscience.simba.engine.UpdateEnvironment
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
+import space.kscience.simba.state.*
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.product
 import space.kscience.simba.utils.toIndex
 import space.kscience.simba.utils.toVector
 import java.util.concurrent.atomic.AtomicInteger
 
-class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
+class AkkaStreamEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
     private val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
-    private val init: (Vector) -> C,
+    private val init: (Vector) -> State,
 ) : AkkaEngine<Void, Env>() {
     override val actorSystem: ActorSystem<Void> by lazy {
         // We parse here empty string as config to avoid accidental `application.conf` loading
         ActorSystem.create(Behaviors.empty(), "AkkaSystem", ConfigFactory.parseString(""))
     }
 
-    private lateinit var field: List<AkkaStreamActor<C, State, Env>>
+    private lateinit var field: List<AkkaStreamActor<State, Env>>
     private var initialTotalCountOfNeighbours = 0
     private var subscribedCount = AtomicInteger(0)
 
     override fun init() {
         field = (0 until dimensions.product()).map { index ->
-            AkkaStreamActor(actorSystem, this).apply { this.handle(Init(init(index.toVector(dimensions)))) }
+            AkkaStreamActor(actorSystem, this).apply {
+                val vector = index.toVector(dimensions)
+                this.handle(Init(vector, init(vector))) }
         }
 
         initialTotalCountOfNeighbours = List(field.size) { index -> getNeighboursIds(index.toVector(dimensions)).size }.sum()
@@ -53,7 +53,7 @@ class AkkaStreamEngine<C: Cell<C, State>, State: ObjectState, Env: EnvironmentSt
         field.forEach { it.handle(UpdateEnvironment(env)) }
     }
 
-    fun subscribedToNeighbour(actor: AkkaStreamActor<C, State, Env>) {
+    fun subscribedToNeighbour(actor: AkkaStreamActor<State, Env>) {
         if (subscribedCount.incrementAndGet() == initialTotalCountOfNeighbours) {
             start {  }
         }

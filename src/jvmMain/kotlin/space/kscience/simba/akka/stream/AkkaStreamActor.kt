@@ -9,10 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import space.kscience.simba.engine.*
-import space.kscience.simba.simulation.iterationMap
-import space.kscience.simba.state.Cell
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.state.ObjectState
+import space.kscience.simba.state.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
@@ -28,11 +25,11 @@ import kotlin.coroutines.CoroutineContext
  * actor will suspend. The problem wit such approach is that we can wait for slow agent while there are already
  * some data to analyze.
  */
-class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentState>(
+class AkkaStreamActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
     private val system: ActorSystem<Void>,
-    private val engine: AkkaStreamEngine<C, State, Env>,
+    private val engine: AkkaStreamEngine<State, Env>,
 ): Actor, CoroutineScope {
-    private lateinit var state: C
+    private lateinit var cell: Cell<State, Env>
     private var environment: Env? = null
 
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
@@ -70,11 +67,11 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentSta
         this@AkkaStreamActor.subscriptions.runForeach({ msg ->
             // TODO ensure that subscription is active
             when (msg) {
-                is Init<*, *> -> state = msg.state as C
+                is Init<*, *> -> { msg as Init<State, Env>; cell = Cell(msg.index, msg.state) }
                 is AddNeighbour -> onAddNeighbourMessage(msg)
                 is Iterate -> onIterateMessage(msg)
-                is PassState<*> -> Unit
-                is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<C, State>)
+                is PassState<*, *> -> Unit
+                is UpdateSelfState<*, *> -> onUpdateSelfState(msg as UpdateSelfState<State, Env>)
                 is UpdateEnvironment<*> -> onUpdateEnvironment(msg as UpdateEnvironment<Env>)
             }
         }, system)
@@ -82,15 +79,15 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentSta
 
     @Suppress("UNCHECKED_CAST")
     private fun onAddNeighbourMessage(msg: AddNeighbour) {
-        neighbours += (msg.cellActor as AkkaStreamActor<C, State, Env>).subscriptions.runWith(Sink.queue<Message>(), system)
+        neighbours += (msg.cellActor as AkkaStreamActor<State, Env>).subscriptions.runWith(Sink.queue<Message>(), system)
         engine.subscribedToNeighbour(this)
     }
 
     private fun tryToIterate() {
-        if (state.isReadyForIteration(neighbours.size)) {
+        if (cell.isReadyForIteration(environment, neighbours.size)) {
             launch {
-                val newCell = state.iterate(iterationMap[state::class.java] as suspend (State, List<State>) -> State)
-                handleWithoutResendingToEngine(UpdateSelfState(newCell, timestamp))
+                val newCell = cell.iterate(environment)
+                handleWithoutResendingToEngine(UpdateSelfState(newCell.state, timestamp))
             }
         }
     }
@@ -106,7 +103,7 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentSta
         // actor got all neighbours' messages, iterate, but never send his own state.
         timestamp++
 
-        val passState = PassState(state.state, timestamp)
+        val passState = PassState(cell.state, timestamp)
         handle(passState)
 
         neighbours.mapIndexed { i, it ->
@@ -122,25 +119,25 @@ class AkkaStreamActor<C: Cell<C, State>, State: ObjectState, Env: EnvironmentSta
 
     @Suppress("UNCHECKED_CAST")
     private fun pullMessage(neighbour: SinkQueueWithCancel<Message>, index: Int): CompletableFuture<Void> {
-        return neighbour.pull().thenApply<PassState<State>?> { maybeMsg ->
+        return neighbour.pull().thenApply<PassState<State, Env>?> { maybeMsg ->
             if (maybeMsg.isEmpty) return@thenApply null
 
             val msg = maybeMsg.get()
-            if (msg !is PassState<*>) return@thenApply null
-            msg as PassState<State>
+            if (msg !is PassState<*, *>) return@thenApply null
+            msg as PassState<State, Env>
         }.thenAccept { state ->
             if (state == null) {
                 futures += pullMessage(neighbour, index)
             } else {
                 synchronized(lock) {
-                    this.state.addNeighboursState(state.state)
+                    this.cell.addNeighboursState(state.state)
                 }
             }
         }.toCompletableFuture()
     }
 
-    private fun onUpdateSelfState(msg: UpdateSelfState<C, State>) {
-        state = msg.newCell
+    private fun onUpdateSelfState(msg: UpdateSelfState<State, Env>) {
+        cell = Cell(cell.vectorId, msg.newState)
 
         if (iterations.decrementAndGet() > 0) {
             forceIteration()
