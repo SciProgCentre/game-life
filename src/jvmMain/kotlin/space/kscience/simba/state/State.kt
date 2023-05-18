@@ -14,9 +14,6 @@ interface EnvironmentState
 //  1. try to isolate Cell from State and Env.
 //      1.1 must decide that to do with `neighbours`
 //      1.2 must decide that to do with `isReadyForIteration`
-//  2. pass Env to iterate method
-//     2.1 problem: ObjectState will be connected with Env.
-//     BUT maybe it is good, because we will set it once in ObjectState and everything else type system will do
 class Cell<S: ObjectState<S, E>, E: EnvironmentState>(val vectorId: Vector, val state: S) : Comparable<Cell<S, E>> {
     private var neighbours: MutableList<S> = mutableListOf()
 

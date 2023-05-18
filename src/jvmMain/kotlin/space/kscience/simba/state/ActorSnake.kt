@@ -8,9 +8,19 @@ import java.io.Serializable
 import kotlin.math.pow
 import kotlin.random.Random
 
+class SnakeEnvironment(
+    val gameSize: Pair<Int, Int> = 10 to 10,
+    val seed: Int = 0,
+    val maxIterations: Int = 100,
+    val trainProbability: Float = 0.9f,
+): EnvironmentState
+
 @kotlinx.serialization.Serializable
-data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeAction>, val iteration: Long) : ObjectState<ActorSnakeState, EnvironmentState> {
-    override suspend fun iterate(neighbours: List<ActorSnakeState>, env: EnvironmentState?): ActorSnakeState {
+data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeAction>, val iteration: Long) : ObjectState<ActorSnakeState, SnakeEnvironment> {
+    override suspend fun iterate(neighbours: List<ActorSnakeState>, env: SnakeEnvironment?): ActorSnakeState {
+        if (env == null) error("Environment for `ActorSnakeState` wasn't set")
+        val random = Random(System.currentTimeMillis()) // TODO parametrize
+
         val combinedState = if (neighbours.none { it.id == 0 }) {
             val stateCopy = ActorSnakeState(this.id, this.table.deepCopy(), this.iteration)
             for (cell in neighbours) {
@@ -21,11 +31,11 @@ data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeActio
             ActorSnakeState(this.id, neighbours.first { it.id == 0 }.table.deepCopy(), this.iteration)
         }
 
-        val snakeGame = Snake(SnakeLearningSimulation.gameSize.first, SnakeLearningSimulation.gameSize.second, SnakeLearningSimulation.random.nextInt())
+        val snakeGame = Snake(env.gameSize.first, env.gameSize.second, random.nextInt())
         snakeGame.train(
-            SnakeLearningSimulation.random, combinedState.table,
-            SnakeLearningSimulation.maxIterations,
-            SnakeLearningSimulation.trainProbability
+            random, combinedState.table,
+            env.maxIterations,
+            env.trainProbability
         ) { calculateReward(it) }
 
         return combinedState
@@ -50,7 +60,7 @@ data class ActorSnakeState(val id: Int, val table: QTable<SnakeState, SnakeActio
         return if (currentDistance < oldDistance) return 1.0 else -1.0
     }
 
-    override fun isReadyForIteration(neighbours: List<ActorSnakeState>, env: EnvironmentState?, expectedCount: Int): Boolean {
+    override fun isReadyForIteration(neighbours: List<ActorSnakeState>, env: SnakeEnvironment?, expectedCount: Int): Boolean {
         return if (id == 0) {
             neighbours.size == expectedCount
         } else {

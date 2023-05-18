@@ -10,20 +10,23 @@ import space.kscience.simba.state.*
 import space.kscience.simba.systems.PrintSystem
 import kotlin.random.Random
 
-class SnakeLearningSimulation: Simulation<ActorSnakeState, EnvironmentState>("snake") {
+class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("snake") {
     private val actorsCount = 30
-    private val snake = Snake(gameSize.first, gameSize.second, seed)
+    private val random = Random(0)
+    private val initEnv = SnakeEnvironment()
+    private val snake = Snake(initEnv.gameSize.first, initEnv.gameSize.second, initEnv.seed)
 
-    override val engine: Engine<EnvironmentState> = createEngine()
-    override val printSystem: PrintSystem<ActorSnakeState, EnvironmentState> = PrintSystem(actorsCount)
+    override val engine: Engine<SnakeEnvironment> = createEngine()
+    override val printSystem: PrintSystem<ActorSnakeState, SnakeEnvironment> = PrintSystem(actorsCount)
 
     init {
         engine.addNewSystem(printSystem)
         engine.init()
+        engine.setNewEnvironment(initEnv)
         engine.iterate()
     }
 
-    private fun createEngine(): Engine<EnvironmentState> {
+    private fun createEngine(): Engine<SnakeEnvironment> {
         return EngineFactory.createEngine(
             intArrayOf(actorsCount), (1 until actorsCount).map { intArrayOf(it) }.toSet()
         ) { (id) -> ActorSnakeState(id, QTable(), 0) }
@@ -50,14 +53,5 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, EnvironmentState>("sn
             engine.iterate()
             call.respond(eatenBait to history)
         }
-    }
-
-    companion object {
-        // TODO environment
-        public val gameSize = 10 to 10
-        public val seed = 0
-        public val random = Random(seed)
-        public val maxIterations = 100
-        public val trainProbability = 0.9f
     }
 }
