@@ -110,7 +110,7 @@ class MainActor<Env: EnvironmentState> private constructor(
     }
 
     private fun onActorMessageForward(msg: ActorMessageForward): MainActor<Env> {
-        engine.processWithSystems(msg.content)
+        engine.processWithAggregators(msg.content)
         return this
     }
 

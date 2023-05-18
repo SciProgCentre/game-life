@@ -7,7 +7,7 @@ import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
 import space.kscience.simba.state.*
-import space.kscience.simba.systems.PrintSystem
+import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
 class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("snake") {
@@ -17,10 +17,10 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("sn
     private val snake = Snake(initEnv.gameSize.first, initEnv.gameSize.second, initEnv.seed)
 
     override val engine: Engine<SnakeEnvironment> = createEngine()
-    override val printSystem: PrintSystem<ActorSnakeState, SnakeEnvironment> = PrintSystem(actorsCount)
+    override val printAggregator: PrintAggregator<ActorSnakeState, SnakeEnvironment> = PrintAggregator(actorsCount)
 
     init {
-        engine.addNewSystem(printSystem)
+        engine.addNewAggregator(printAggregator)
         engine.init()
         engine.setNewEnvironment(initEnv)
         engine.iterate()
@@ -38,7 +38,7 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("sn
 
             snake.restart()
             val history = mutableListOf<SnakeState>()
-            val state = printSystem.render(iteration).first()
+            val state = printAggregator.render(iteration).first()
 
             fun nextDirection(currentState: SnakeState, oldDirection: Snake.Direction?): Snake.Direction {
                 return state.table.getNextDirection(currentState, random.getRandomSnakeDirection(oldDirection), oldDirection, true)

@@ -21,7 +21,7 @@ class CoroutinesActorEngine<State: ObjectState<State, Env>, Env: EnvironmentStat
         get() = EmptyCoroutineContext
 
     override var started: Boolean = false
-    override val systems: MutableList<EngineSystem> = mutableListOf()
+    override val aggregators: MutableList<EngineAggregator> = mutableListOf()
 
     override fun init() {
         started = true
@@ -60,6 +60,6 @@ class CoroutinesActorEngine<State: ObjectState<State, Env>, Env: EnvironmentStat
     }
 
     internal fun processActorMessage(msg: Message) {
-        processWithSystems(msg)
+        processWithAggregators(msg)
     }
 }

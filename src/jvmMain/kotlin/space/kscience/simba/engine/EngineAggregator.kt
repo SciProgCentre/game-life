@@ -1,5 +1,5 @@
 package space.kscience.simba.engine
 
-interface EngineSystem {
+interface EngineAggregator {
     fun process(msg: Message)
 }

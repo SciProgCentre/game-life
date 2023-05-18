@@ -9,7 +9,7 @@ import space.kscience.simba.akka.stream.AkkaStreamEngine
 import space.kscience.simba.coroutines.CoroutinesActorEngine
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.*
-import space.kscience.simba.systems.PrintSystem
+import space.kscience.simba.aggregators.PrintAggregator
 import space.kscience.simba.utils.Vector
 import java.util.*
 import kotlin.test.assertEquals
@@ -121,12 +121,12 @@ class SingleClusterEngineTest {
     }
 
     private fun checkEnginesEquality(firstEngine: Engine<*>, secondEngine: Engine<*>, size: Int, iterations: Int) {
-        val firstPrintSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(size)
-        firstEngine.addNewSystem(firstPrintSystem)
+        val firstPrintAggregator = PrintAggregator<ActorGameOfLifeState, EnvironmentState>(size)
+        firstEngine.addNewAggregator(firstPrintAggregator)
         firstEngine.init()
 
-        val secondPrintSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(size)
-        secondEngine.addNewSystem(secondPrintSystem)
+        val secondPrintAggregator = PrintAggregator<ActorGameOfLifeState, EnvironmentState>(size)
+        secondEngine.addNewAggregator(secondPrintAggregator)
         secondEngine.init()
 
         for (i in 0L..iterations) {
@@ -136,8 +136,8 @@ class SingleClusterEngineTest {
                 firstEngine.iterate()
                 secondEngine.iterate()
 
-                val firstField = actorsToString(firstPrintSystem.render(i).toList())
-                val secondField = actorsToString(secondPrintSystem.render(i).toList())
+                val firstField = actorsToString(firstPrintAggregator.render(i).toList())
+                val secondField = actorsToString(secondPrintAggregator.render(i).toList())
 
                 assertEquals(firstField.trim(), secondField.trim())
             }
@@ -146,33 +146,33 @@ class SingleClusterEngineTest {
 
     @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectness(simulationEngine: Engine<*>) {
-        val printSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(n * m)
-        simulationEngine.addNewSystem(printSystem)
+        val printAggregator = PrintAggregator<ActorGameOfLifeState, EnvironmentState>(n * m)
+        simulationEngine.addNewAggregator(printAggregator)
         simulationEngine.init()
 
         runBlocking {
             simulationEngine.iterate()
-            val field1 = actorsToString(printSystem.render(0).toList())
+            val field1 = actorsToString(printAggregator.render(0).toList())
             assertEquals("OOOOOOO\nOOOOOOO\nOOXXXOO\nOOXXXOO\nOOXXXOO\nOOOOOOO\nOOOOOOO", field1.trim())
 
             simulationEngine.iterate()
-            val field2 = actorsToString(printSystem.render(1).toList())
+            val field2 = actorsToString(printAggregator.render(1).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXOXOO\nOXOOOXO\nOOXOXOO\nOOOXOOO\nOOOOOOO", field2.trim())
 
             simulationEngine.iterate()
-            val field3 = actorsToString(printSystem.render(2).toList())
+            val field3 = actorsToString(printAggregator.render(2).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXXXOO\nOXXOXXO\nOOXXXOO\nOOOXOOO\nOOOOOOO", field3.trim())
 
             simulationEngine.iterate()
-            val field4 = actorsToString(printSystem.render(3).toList())
+            val field4 = actorsToString(printAggregator.render(3).toList())
             assertEquals("OOOOOOO\nOOXXXOO\nOXOOOXO\nOXOOOXO\nOXOOOXO\nOOXXXOO\nOOOOOOO", field4.trim())
         }
     }
 
     @Suppress("SpellCheckingInspection")
     private fun checkEngineCorrectnessAfterIterations(simulationEngine: Engine<*>) {
-        val printSystem = PrintSystem<ActorGameOfLifeState, EnvironmentState>(n * m)
-        simulationEngine.addNewSystem(printSystem)
+        val printAggregator = PrintAggregator<ActorGameOfLifeState, EnvironmentState>(n * m)
+        simulationEngine.addNewAggregator(printAggregator)
         simulationEngine.init()
 
         simulationEngine.iterate()
@@ -181,16 +181,16 @@ class SingleClusterEngineTest {
         simulationEngine.iterate()
 
         runBlocking {
-            val field1 = actorsToString(printSystem.render(0).toList())
+            val field1 = actorsToString(printAggregator.render(0).toList())
             assertEquals("OOOOOOO\nOOOOOOO\nOOXXXOO\nOOXXXOO\nOOXXXOO\nOOOOOOO\nOOOOOOO", field1.trim())
 
-            val field2 = actorsToString(printSystem.render(1).toList())
+            val field2 = actorsToString(printAggregator.render(1).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXOXOO\nOXOOOXO\nOOXOXOO\nOOOXOOO\nOOOOOOO", field2.trim())
 
-            val field3 = actorsToString(printSystem.render(2).toList())
+            val field3 = actorsToString(printAggregator.render(2).toList())
             assertEquals("OOOOOOO\nOOOXOOO\nOOXXXOO\nOXXOXXO\nOOXXXOO\nOOOXOOO\nOOOOOOO", field3.trim())
 
-            val field4 = actorsToString(printSystem.render(3).toList())
+            val field4 = actorsToString(printAggregator.render(3).toList())
             assertEquals("OOOOOOO\nOOXXXOO\nOXOOOXO\nOXOOOXO\nOXOOOXO\nOOXXXOO\nOOOOOOO", field4.trim())
         }
     }

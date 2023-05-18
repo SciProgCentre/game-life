@@ -3,7 +3,7 @@ package space.kscience.simba.simulation
 import space.kscience.simba.EngineFactory
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.*
-import space.kscience.simba.systems.PrintSystem
+import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
 // original work https://github.com/MaxRobinsonTheGreat/NeuralPatterns
@@ -16,10 +16,10 @@ class MitosisSimulation: Simulation<ActorMitosisState, EnvironmentState>("mitosi
         ActorMitosisState(it, random.nextDouble())
     }
 
-    override val printSystem: PrintSystem<ActorMitosisState, EnvironmentState> = PrintSystem(n * m)
+    override val printAggregator: PrintAggregator<ActorMitosisState, EnvironmentState> = PrintAggregator(n * m)
 
     init {
-        engine.addNewSystem(printSystem)
+        engine.addNewAggregator(printAggregator)
         engine.init()
         engine.iterate()
     }

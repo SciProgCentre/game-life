@@ -1,10 +1,10 @@
-package space.kscience.simba.systems
+package space.kscience.simba.aggregators
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import space.kscience.simba.engine.EngineSystem
+import space.kscience.simba.engine.EngineAggregator
 import space.kscience.simba.engine.Message
 import space.kscience.simba.engine.PassState
 import space.kscience.simba.state.EnvironmentState
@@ -13,7 +13,7 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-abstract class AbstractCollector<State: ObjectState<State, Env>, Env: EnvironmentState> : EngineSystem, CoroutineScope {
+abstract class AbstractCollector<State: ObjectState<State, Env>, Env: EnvironmentState> : EngineAggregator, CoroutineScope {
     override val coroutineContext = Dispatchers.Unconfined
 
     private val statesByTimestamp = mutableMapOf<Long, MutableSet<State>>()
@@ -25,7 +25,8 @@ abstract class AbstractCollector<State: ObjectState<State, Env>, Env: Environmen
     init {
         launch {
             for (msg in channel) {
-                println("Abstract collector $msg")
+                // TODO
+//                println("Abstract collector $msg")
                 statesByTimestamp
                     .getOrPut(msg.timestamp) { mutableSetOf() }
                     .add(msg.state)

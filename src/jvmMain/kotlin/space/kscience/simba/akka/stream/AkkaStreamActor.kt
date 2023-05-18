@@ -51,7 +51,7 @@ class AkkaStreamActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
     }
 
     override fun sendToEngine(msg: Message) {
-        engine.systems.forEach { it.process(msg) }
+        engine.aggregators.forEach { it.process(msg) }
     }
 
     init {

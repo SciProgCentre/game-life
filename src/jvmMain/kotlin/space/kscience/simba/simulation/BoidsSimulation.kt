@@ -7,8 +7,7 @@ import space.kscience.simba.engine.Engine
 import space.kscience.simba.state.ActorBoidsState
 import space.kscience.simba.state.ActorBoidsState.Companion.randomBoidsState
 import space.kscience.simba.state.BoidsEnvironment
-import space.kscience.simba.state.EnvironmentState
-import space.kscience.simba.systems.PrintSystem
+import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
 class BoidsSimulation: Simulation<ActorBoidsState, BoidsEnvironment>("boids") {
@@ -21,10 +20,10 @@ class BoidsSimulation: Simulation<ActorBoidsState, BoidsEnvironment>("boids") {
     override val engine: Engine<BoidsEnvironment> = EngineFactory.createEngine(intArrayOf(n), neighbours) {
         random.randomBoidsState(env)
     }
-    override val printSystem: PrintSystem<ActorBoidsState, BoidsEnvironment> = PrintSystem(n)
+    override val printAggregator: PrintAggregator<ActorBoidsState, BoidsEnvironment> = PrintAggregator(n)
 
     init {
-        engine.addNewSystem(printSystem)
+        engine.addNewAggregator(printAggregator)
         engine.init()
         engine.setNewEnvironment(env)
         engine.iterate()

@@ -4,20 +4,20 @@ import space.kscience.simba.state.EnvironmentState
 
 interface Engine<Env: EnvironmentState> {
     var started: Boolean
-    val systems: MutableList<EngineSystem>
+    val aggregators: MutableList<EngineAggregator>
 
     fun init()
     fun iterate()
     fun setNewEnvironment(env: Env)
 
-    fun addNewSystem(system: EngineSystem) {
-        if (started) throw AssertionError("Cannot add new system because engine already started to work")
-        systems += system
+    fun addNewAggregator(aggregator: EngineAggregator) {
+        if (started) throw AssertionError("Cannot add new aggregator because engine already started to work")
+        aggregators += aggregator
     }
 
-    fun processWithSystems(msg: Message) {
+    fun processWithAggregators(msg: Message) {
         if (!started) throw AssertionError("Cannot process new message because engine wasn't started")
-        systems.forEach { it.process(msg) }
+        aggregators.forEach { it.process(msg) }
     }
 }
 
