@@ -49,15 +49,11 @@ kotlin {
 
         val core by creating {
             dependsOn(commonMain)
-            dependencies {
-            }
         }
 
-        val jvmMain by getting {
+        val impl by creating {
             dependsOn(core)
             dependencies {
-                implementation(files("src/jvmTest/resources"))
-
                 implementation("com.typesafe.akka:akka-actor-typed_$akkaScalaBinaryVersion:$akkaVersion")
                 implementation("com.typesafe.akka:akka-stream-typed_$akkaScalaBinaryVersion:$akkaVersion")
                 implementation("com.typesafe.akka:akka-slf4j_$akkaScalaBinaryVersion:$akkaVersion")
@@ -82,15 +78,7 @@ kotlin {
                 implementation("org.slf4j:slf4j-simple:1.7.36")
                 implementation("ch.qos.logback:logback-classic:1.4.4") // needs JDK 11+
 
-                implementation("io.ktor:ktor-serialization:$ktorVersion")
-//                implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
-//                implementation("com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
-
-
-                implementation("io.ktor:ktor-server-core:$ktorVersion")
-                implementation("io.ktor:ktor-server-netty:$ktorVersion")
-
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
 
                 implementation("com.lightbend.akka:akka-persistence-jdbc_$akkaScalaBinaryVersion:5.2.0")
@@ -98,6 +86,18 @@ kotlin {
                 implementation("com.typesafe.slick:slick_$akkaScalaBinaryVersion:$slickVersion")
                 implementation("com.typesafe.slick:slick-hikaricp_$akkaScalaBinaryVersion:$slickVersion")
                 implementation("org.postgresql:postgresql:42.5.1")
+            }
+        }
+
+        val jvmMain by getting {
+            dependsOn(core)
+            dependsOn(impl)
+            dependencies {
+                implementation(files("src/jvmTest/resources"))
+
+                implementation("io.ktor:ktor-serialization:$ktorVersion")
+                implementation("io.ktor:ktor-server-core:$ktorVersion")
+                implementation("io.ktor:ktor-server-netty:$ktorVersion")
             }
         }
 

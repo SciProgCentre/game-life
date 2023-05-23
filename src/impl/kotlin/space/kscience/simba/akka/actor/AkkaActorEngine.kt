@@ -25,6 +25,7 @@ class AkkaActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
     }
 
     override fun init() {
+        // TODO make it more reliable
         configCluster()
         if (actorSystem.address().port.get() == 2551) {
             actorSystem.tell(SpawnCells(dimensions, neighborsIndices, init))
