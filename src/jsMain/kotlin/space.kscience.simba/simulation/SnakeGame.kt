@@ -46,7 +46,7 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
     }
 
     private val eatenBaitByIteration = mutableListOf<Int>()
-    private var iteration = -1L
+    private var iteration = 0L
 
     override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
         panel.clear()

@@ -30,7 +30,7 @@ class GameOfLife(private val width: Int, private val height: Int, private val ce
         install(JsonFeature) { serializer = KotlinxSerializer() }
     }
 
-    private var iteration = -1L
+    private var iteration = 0L
 
     private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeState> {
         return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
