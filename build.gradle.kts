@@ -47,7 +47,14 @@ kotlin {
             }
         }
 
+        val core by creating {
+            dependsOn(commonMain)
+            dependencies {
+            }
+        }
+
         val jvmMain by getting {
+            dependsOn(core)
             dependencies {
                 implementation(files("src/jvmTest/resources"))
 

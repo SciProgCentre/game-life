@@ -2,13 +2,14 @@ package space.kscience.simba.state
 
 import space.kscience.simba.utils.Vector
 import space.kscience.simba.utils.compareTo
+import java.io.Serializable
 
-interface ObjectState<Self: ObjectState<Self, E>, E: EnvironmentState> {
+interface ObjectState<Self: ObjectState<Self, E>, E: EnvironmentState>: Serializable {
     suspend fun iterate(neighbours: List<Self>, env: E?): Self
     fun isReadyForIteration(neighbours: List<Self>, env: E?, expectedCount: Int): Boolean
 }
 
-interface EnvironmentState
+interface EnvironmentState : Serializable
 
 // TODO
 //  1. try to isolate Cell from State and Env.
