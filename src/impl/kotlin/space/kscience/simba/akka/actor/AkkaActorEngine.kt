@@ -25,11 +25,10 @@ class AkkaActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
     }
 
     override fun init() {
-        // TODO make it more reliable
         configCluster()
-        if (actorSystem.address().port.get() == 2551) {
-            actorSystem.tell(SpawnCells(dimensions, neighborsIndices, init))
-        }
+        // NB: we will send `SpawnCells` message every time when new node will connect.
+        // But this should not be a problem, because we will just ignore the `Init` message if actor already initialized.
+        actorSystem.tell(SpawnCells(dimensions, neighborsIndices, init))
     }
 
     private fun configCluster() {

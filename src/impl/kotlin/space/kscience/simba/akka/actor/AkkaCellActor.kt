@@ -21,6 +21,8 @@ import space.kscience.simba.engine.*
 import space.kscience.simba.state.*
 import kotlin.coroutines.CoroutineContext
 
+// NB: when we recreate this actor, we also recreate reference on original `MainActor`.
+// So all massages are forward to the original engine.
 class CellActor(
     private val mainActorRef: ActorRef<MainActorMessage>,
     internal val entityId: String
@@ -101,7 +103,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     override fun eventHandler(): EventHandler<PersistentState<State, Env>, Message> {
         return newEventHandlerBuilder()
             .forAnyState()
-            .onEvent(Init::class.java) { _, msg -> onInitMessage(msg as Init<State, Env>) }
+            .onEvent(Init::class.java) { state, msg -> onInitMessage(state, msg as Init<State, Env>) }
             .onEvent(AddNeighbour::class.java, ::onAddNeighbourMessage)
             .onEvent(Iterate::class.java, ::onIterateMessage)
             .onEvent(PassState::class.java) { state, msg -> onPassStateMessage(state, msg as PassState<State, Env>) }
@@ -110,7 +112,9 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
             .build()
     }
 
-    private fun onInitMessage(msg: Init<State, Env>): PersistentState<State, Env> {
+    private fun onInitMessage(oldState: PersistentState<State, Env>?, msg: Init<State, Env>): PersistentState<State, Env> {
+        // We can get second `Init` message when new node is connecting to cluster. We should just ignore it.
+        if (oldState != null) return oldState
         info("Got `Init` message \"${msg.state}\"", null)
         return PersistentState(Cell(msg.index, msg.state))
     }
