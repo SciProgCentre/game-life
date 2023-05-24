@@ -62,4 +62,9 @@ class AkkaActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
     override fun setNewEnvironment(env: Env) {
         actorSystem.tell(PassNewEnvironment(env))
     }
+
+    fun shutdown() {
+        actorSystem.terminate()
+        Thread.sleep(5000)
+    }
 }

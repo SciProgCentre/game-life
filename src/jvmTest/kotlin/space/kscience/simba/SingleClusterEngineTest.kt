@@ -36,6 +36,7 @@ class SingleClusterEngineTest {
             intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
         )
         checkEngineCorrectness(simulationEngine)
+        simulationEngine.shutdown()
     }
 
     @Test
@@ -44,6 +45,7 @@ class SingleClusterEngineTest {
             intArrayOf(n, m), gameOfLifeNeighbours, testLocalConfig, ::fillSquare
         )
         checkEngineCorrectnessAfterIterations(simulationEngine)
+        simulationEngine.shutdown()
     }
 
     @Test
@@ -97,6 +99,7 @@ class SingleClusterEngineTest {
         ) { (i, j) -> classicState(i, j, random2.nextBoolean()) }
 
         checkEnginesEquality(akkaEngine, coroutinesEngine, bigM * bigN, 10)
+        akkaEngine.shutdown()
     }
 
     @Test
@@ -118,6 +121,7 @@ class SingleClusterEngineTest {
             gameOfLifeNeighbours
         ) { (i, j) -> classicState(i, j, random2.nextBoolean()) }
         checkEnginesEquality(akkaEngine, akkaStreamEngine, bigM * bigN, 1000)
+        akkaEngine.shutdown()
     }
 
     private fun checkEnginesEquality(firstEngine: Engine<*>, secondEngine: Engine<*>, size: Int, iterations: Int) {
