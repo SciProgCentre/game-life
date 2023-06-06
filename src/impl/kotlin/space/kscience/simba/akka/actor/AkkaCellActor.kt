@@ -6,10 +6,11 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.EntityRef
 import akka.cluster.sharding.typed.javadsl.EntityTypeKey
+import akka.persistence.SnapshotOffer
 import akka.persistence.typed.PersistenceId
-import akka.persistence.typed.javadsl.CommandHandler
-import akka.persistence.typed.javadsl.EventHandler
-import akka.persistence.typed.javadsl.EventSourcedBehavior
+import akka.persistence.typed.RecoveryCompleted
+import akka.persistence.typed.SnapshotCompleted
+import akka.persistence.typed.javadsl.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -66,6 +67,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
 ): EventSourcedBehavior<Message, Message, PersistentState<State, Env>>(persistenceId), CoroutineScope {
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
     private val log = context.system.log()
+    private var inRecovery = true
 
     init {
         log.info(MainActor.logMarker, "Create akka Actor with ID $entityId")
@@ -93,10 +95,6 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
                     (context.system as ActorSystem<MainActorMessage>).tell(ActorInitialized(entityId))
                 }
             }
-//            .onCommand(UpdateSelfState::class.java) { _ ->
-//                Effect().none()
-//            }
-            // TODO stash if iteration = true
             .onAnyCommand(Effect()::persist)
     }
 
@@ -109,6 +107,15 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
             .onEvent(PassState::class.java) { state, msg -> onPassStateMessage(state, msg as PassState<State, Env>) }
             .onEvent(UpdateSelfState::class.java) { state, msg -> onUpdateSelfState(state, msg as UpdateSelfState<State, Env>) }
             .onEvent(UpdateEnvironment::class.java) { state, msg -> onUpdateEnvironment(state, msg as UpdateEnvironment<Env>) }
+            .build()
+    }
+
+    override fun signalHandler(): SignalHandler<PersistentState<State, Env>> {
+        return newSignalHandlerBuilder()
+            .onSignal(RecoveryCompleted.instance()) { state ->
+                inRecovery = false
+                info("Recovery completed", state)
+            }
             .build()
     }
 
@@ -127,7 +134,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     }
 
     private fun onIterateMessage(oldState: PersistentState<State, Env>, msg: Iterate): PersistentState<State, Env> {
-        info("Gor new iterate request", oldState)
+        info("Got new iterate request", oldState)
         val newState = oldState.copy(iterations = oldState.iterations + 1)
         if (oldState.iterations != 0) return newState
         return forceIteration(newState)
@@ -140,7 +147,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
         // If we do it after full iteration process, we can have a situation when
         // actor got all neighbours' messages, iterate, but never send his own state.
         val newTimestamp = oldState.timestamp + 1
-        oldState.neighbours.forEach { it.handle(PassState(oldState.cell.state, newTimestamp)) }
+        doIfRecovered { oldState.neighbours.forEach { it.handle(PassState(oldState.cell.state, newTimestamp)) } }
         val newState = oldState.copy(
             earlyStates = LinkedHashMap(oldState.earlyStates.filter { it.key != newTimestamp }),
             timestamp = newTimestamp
@@ -176,19 +183,17 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
         val newState = oldState.copy(iterating = true)
         launch {
             val newCell = newState.cell.iterate(newState.environment)
-            context.self.tell(UpdateSelfState(newCell.state, oldState.timestamp))
+            // Note: in theory, if we could process `UpdateSelfState` and not persist it, we would be able to run
+            // next command unconditionally. When recovery process begin, we will recalculate state and send new
+            // `UpdateSelfState` message (not the stored one). But first of all, we don't have such option and,
+            // second, we can't handle new incoming requests while in recovery state, so it will not work.
+            doIfRecovered { context.self.tell(UpdateSelfState(newCell.state, oldState.timestamp)) }
             info("New state \"${newCell.state}\" was created", oldState)
         }
         return newState
     }
 
     private fun onUpdateSelfState(oldState: PersistentState<State, Env>, msg: UpdateSelfState<State, Env>): PersistentState<State, Env> {
-        if (oldState.timestamp != msg.timestamp) {
-            // TODO document why we need this. It is necessary because on recovery this event will be created twice, but we need one only
-            info("Update call was discarded because already updated", oldState)
-            return oldState
-        }
-
         val newState = oldState.copy(
             cell = Cell(oldState.cell.vectorId, msg.newState), timestamp = oldState.timestamp, iterating = false, iterations = oldState.iterations - 1
         )
@@ -200,5 +205,10 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     private fun onUpdateEnvironment(oldState: PersistentState<State, Env>, msg: UpdateEnvironment<Env>): PersistentState<State, Env> {
         info("Environment was updated from \"${oldState.environment}\" to \"${msg.env}\"", oldState)
         return oldState.copy(environment = msg.env)
+    }
+
+    private inline fun doIfRecovered(action: () -> Unit) {
+        if (inRecovery) return
+        action()
     }
 }
