@@ -6,10 +6,8 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.EntityRef
 import akka.cluster.sharding.typed.javadsl.EntityTypeKey
-import akka.persistence.SnapshotOffer
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.RecoveryCompleted
-import akka.persistence.typed.SnapshotCompleted
 import akka.persistence.typed.javadsl.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,8 +73,8 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
 
     // Inline is used here because we want to print correct method where `log.info` was called (see %M option in config)
     @Suppress("NOTHING_TO_INLINE")
-    private inline fun info(msg: String, state: PersistentState<State, Env>?) {
-        log.info(MainActor.logMarker, "[Actor $entityId] [Time ${state?.timestamp}] $msg")
+    private inline fun info(state: PersistentState<State, Env>?, template: String, vararg args: Any?) {
+        log.info(MainActor.logMarker, "[Actor {}] [Time {}] $template", entityId, state?.timestamp, args)
     }
 
     override fun emptyState(): PersistentState<State, Env>? {
@@ -114,7 +112,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
         return newSignalHandlerBuilder()
             .onSignal(RecoveryCompleted.instance()) { state ->
                 inRecovery = false
-                info("Recovery completed", state)
+                info(state, "Recovery completed")
             }
             .build()
     }
@@ -122,26 +120,26 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     private fun onInitMessage(oldState: PersistentState<State, Env>?, msg: Init<State, Env>): PersistentState<State, Env> {
         // We can get second `Init` message when new node is connecting to cluster. We should just ignore it.
         if (oldState != null) return oldState
-        info("Got `Init` message \"${msg.state}\"", null)
+        info(null, "Got `Init` message \"{}\"", msg.state)
         return PersistentState(Cell(msg.index, msg.state))
     }
 
     private fun onAddNeighbourMessage(oldState: PersistentState<State, Env>, msg: AddNeighbour): PersistentState<State, Env> {
         val cellActor = msg.cellActor as CellActor
-        info("Got request for new neighbour with id ${cellActor.entityId}", oldState)
+        info(oldState, "Got request for new neighbour with id {}", cellActor.entityId)
         cellActor.unwrap(context)
         return oldState.copy(neighbours = oldState.neighbours + cellActor)
     }
 
     private fun onIterateMessage(oldState: PersistentState<State, Env>, msg: Iterate): PersistentState<State, Env> {
-        info("Got new iterate request", oldState)
+        info(oldState, "Got new iterate request")
         val newState = oldState.copy(iterations = oldState.iterations + 1)
         if (oldState.iterations != 0) return newState
         return forceIteration(newState)
     }
 
     private fun forceIteration(oldState: PersistentState<State, Env>): PersistentState<State, Env> {
-        info("Send current state to neighbours", oldState)
+        info(oldState, "Send current state to neighbours")
 
         // Note: we must advance timestamp right after iteration request and not after full iteration process.
         // If we do it after full iteration process, we can have a situation when
@@ -159,7 +157,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     }
 
     private fun onPassStateMessage(oldState: PersistentState<State, Env>, msg: PassState<State, Env>): PersistentState<State, Env> {
-        info("Got new message \"$msg\"", oldState)
+        info(oldState, "Got new message \"{}\"", msg)
         saveState(oldState, msg)
         if (msg.timestamp != oldState.timestamp) return oldState
         return tryToIterate(oldState)
@@ -179,7 +177,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
     private fun tryToIterate(oldState: PersistentState<State, Env>): PersistentState<State, Env> {
         if (!oldState.cell.isReadyForIteration(oldState.environment, oldState.neighbours.size)) return oldState
 
-        info("Launch process to create new state", oldState)
+        info(oldState, "Launch process to create new state")
         val newState = oldState.copy(iterating = true)
         launch {
             val newCell = newState.cell.iterate(newState.environment)
@@ -188,7 +186,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
             // `UpdateSelfState` message (not the stored one). But first of all, we don't have such option and,
             // second, we can't handle new incoming requests while in recovery state, so it will not work.
             doIfRecovered { context.self.tell(UpdateSelfState(newCell.state, oldState.timestamp)) }
-            info("New state \"${newCell.state}\" was created", oldState)
+            info(oldState, "New state \"${newCell.state}\" was created")
         }
         return newState
     }
@@ -197,13 +195,13 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
         val newState = oldState.copy(
             cell = Cell(oldState.cell.vectorId, msg.newState), timestamp = oldState.timestamp, iterating = false, iterations = oldState.iterations - 1
         )
-        info("State was updated from \"${oldState.cell.state}\" to \"${newState.cell.state}\"", oldState)
+        info(oldState, "State was updated from \"{}\" to \"{}\"", oldState.cell.state, newState.cell.state)
         if (newState.iterations != 0) return forceIteration(newState)
         return newState
     }
 
     private fun onUpdateEnvironment(oldState: PersistentState<State, Env>, msg: UpdateEnvironment<Env>): PersistentState<State, Env> {
-        info("Environment was updated from \"${oldState.environment}\" to \"${msg.env}\"", oldState)
+        info(oldState, "Environment was updated from \"{}\" to \"{}\"", oldState.environment, msg.env)
         return oldState.copy(environment = msg.env)
     }
 
