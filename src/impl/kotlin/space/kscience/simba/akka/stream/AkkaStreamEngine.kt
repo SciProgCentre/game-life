@@ -16,7 +16,7 @@ import space.kscience.simba.utils.toVector
 import java.util.concurrent.atomic.AtomicInteger
 
 class AkkaStreamEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
-    private val dimensions: Vector,
+    override val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> State,
 ) : AkkaEngine<Void, Env>() {

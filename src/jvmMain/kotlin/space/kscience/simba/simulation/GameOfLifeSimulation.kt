@@ -11,9 +11,10 @@ class GameOfLifeSimulation: Simulation<ActorGameOfLifeState, EnvironmentState>("
     private val n = 10
     private val m = 10
 
-    override val engine: Engine<EnvironmentState> = EngineFactory.createEngine(
-        intArrayOf(n, m), gameOfLifeNeighbours, { (i, j) -> classicState(i, j, random.nextBoolean()) }
-    )
+    override val engine: Engine<EnvironmentState> = EngineFactory
+        .createEngine(intArrayOf(n, m), gameOfLifeNeighbours) { (i, j) ->
+            classicState(i, j, random.nextBoolean())
+        }
 
     override val printAggregator: PrintAggregator<ActorGameOfLifeState, EnvironmentState> = PrintAggregator(n * m)
 

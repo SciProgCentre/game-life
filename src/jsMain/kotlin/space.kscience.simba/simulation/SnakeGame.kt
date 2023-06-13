@@ -33,17 +33,15 @@ data class SnakeState(val body: List<Vector2>, val bait: Vector2?)
 @kotlinx.serialization.Serializable
 data class SnakeGameState(@SerialName("first") val eatenBate: Int, @SerialName("second") val history: List<SnakeState>)
 
-class SnakeGame(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem {
-    override val name: String = "Snake"
+class SnakeGame(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem() {
+    companion object {
+        const val name: String = "snake"
+    }
+
+    override val kotlinxSerializer = KotlinxSerializer(kotlinx.serialization.json.Json { allowStructuredMapKeys = true })
 
     private lateinit var context: CanvasRenderingContext2D
     private val learningTrace: Trace = Trace()
-    private val endpoint = window.location.origin
-    private val jsonClient = HttpClient {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(kotlinx.serialization.json.Json { allowStructuredMapKeys = true })
-        }
-    }
 
     private val eatenBaitByIteration = mutableListOf<Int>()
     private var iteration = 0L
@@ -84,7 +82,7 @@ class SnakeGame(private val width: Int, private val height: Int, private val cel
     }
 
     private suspend fun getSnakeGameState(iteration: Long): SnakeGameState {
-        return jsonClient.get("$endpoint/status/${name.lowercase()}/play/$iteration")
+        return jsonClient.get("$endpoint/status/$name/play/$iteration")
     }
 
     // TODO simplify game; just one iteration (generate food once)

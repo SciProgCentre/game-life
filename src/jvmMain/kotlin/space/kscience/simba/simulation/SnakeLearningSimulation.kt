@@ -3,11 +3,13 @@ package space.kscience.simba.simulation
 import io.ktor.application.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.util.pipeline.*
 import space.kscience.simba.EngineFactory
+import space.kscience.simba.aggregators.PrintAggregator
 import space.kscience.simba.engine.Engine
 import space.kscience.simba.machine_learning.reinforcment_learning.game.Snake
 import space.kscience.simba.state.*
-import space.kscience.simba.aggregators.PrintAggregator
+import space.kscience.simba.utils.SimulationSettings
 import kotlin.random.Random
 
 class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("snake") {
@@ -16,7 +18,11 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("sn
     private val initEnv = SnakeEnvironment()
     private val snake = Snake(initEnv.gameSize.first, initEnv.gameSize.second, initEnv.seed)
 
-    override val engine: Engine<SnakeEnvironment> = createEngine()
+    override val engine: Engine<SnakeEnvironment> = EngineFactory
+        .createEngine(intArrayOf(actorsCount), (1 until actorsCount).map { intArrayOf(it) }.toSet()) { (id) ->
+            ActorSnakeState(id, QTable(), 0)
+        }
+
     override val printAggregator: PrintAggregator<ActorSnakeState, SnakeEnvironment> = PrintAggregator(actorsCount)
 
     init {
@@ -24,12 +30,6 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("sn
         engine.init()
         engine.setNewEnvironment(initEnv)
         engine.iterate()
-    }
-
-    private fun createEngine(): Engine<SnakeEnvironment> {
-        return EngineFactory.createEngine(
-            intArrayOf(actorsCount), (1 until actorsCount).map { intArrayOf(it) }.toSet()
-        ) { (id) -> ActorSnakeState(id, QTable(), 0) }
     }
 
     override fun Routing.addAdditionalRouting() {
@@ -53,5 +53,9 @@ class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("sn
             engine.iterate()
             call.respond(eatenBait to history)
         }
+    }
+
+    override suspend fun PipelineContext<Unit, ApplicationCall>.configureSettingRouting() {
+        call.respond(SimulationSettings(name, intArrayOf(initEnv.gameSize.first, initEnv.gameSize.second)))
     }
 }

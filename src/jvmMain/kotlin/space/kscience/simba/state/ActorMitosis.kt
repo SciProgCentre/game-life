@@ -19,6 +19,7 @@ data class ActorMitosisState(val vectorId: Vector, val colorIntensity: Double) :
         return neighbours.size == expectedCount
     }
 
+    @kotlinx.serialization.Transient
     private val filter = doubleArrayOf(
         -0.939, 0.88, -0.939,
         0.88, 0.4, 0.88,

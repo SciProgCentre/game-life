@@ -11,7 +11,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 class CoroutinesActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
-    private val dimensions: Vector,
+    override val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     private val init: (Vector) -> State,
 ): Engine<Env>, CoroutineScope {

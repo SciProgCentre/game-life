@@ -11,17 +11,18 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import space.kscience.simba.simulation.*
 
-private val simulations = listOf(
-    GameOfLifeSimulation(), BoidsSimulation(), MitosisSimulation(), SnakeLearningSimulation()
-)
-
 fun main(args: Array<String>) {
+    val simulation = GameOfLifeSimulation()
+//    val simulation = BoidsSimulation()
+//    val simulation = MitosisSimulation()
+//    val simulation = SnakeLearningSimulation()
     if (args.contains("-server")) {
-        launchServer()
+        launchServer(simulation)
     }
 }
 
-fun launchServer() {
+@Suppress("ExtractKtorModule")
+fun launchServer(simulation: Simulation<*, *>) {
     embeddedServer(Netty, 9090) {
         install(ContentNegotiation) {
             json()
@@ -46,7 +47,7 @@ fun launchServer() {
                 resources("")
             }
 
-            simulations.forEach { with(it) { this@routing.setUp() } }
+            with(simulation) { this@routing.setUp() }
         }
     }.start(wait = true)
 }

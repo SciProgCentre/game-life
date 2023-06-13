@@ -1,8 +1,5 @@
 package space.kscience.simba.simulation
 
-import io.ktor.client.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -43,20 +40,18 @@ class TriangleSprite(private val position: Vector2, private val direction: Vecto
 @Serializable
 class ActorBoidsState(val position: Vector2, val direction: Vector2, val velocity: Vector2)
 
-class Boids(private val width: Int, private val height: Int): GameSystem {
-    override val name: String = "Boids"
+class Boids(private val width: Int, private val height: Int) : GameSystem() {
+    companion object {
+        const val name: String = "boids"
+    }
 
     private lateinit var context: CanvasRenderingContext2D
-    private val endpoint = window.location.origin
-    private val jsonClient = HttpClient {
-        install(JsonFeature) { serializer = KotlinxSerializer() }
-    }
 
     private var iteration = 0L
     private var withAllRules = false
 
     private suspend fun getBoidsData(iteration: Long): List<ActorBoidsState> {
-        return jsonClient.get("$endpoint/status/boids/$iteration")
+        return jsonClient.get("$endpoint/status/$name/$iteration")
     }
 
     override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {

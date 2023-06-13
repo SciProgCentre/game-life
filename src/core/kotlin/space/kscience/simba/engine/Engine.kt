@@ -1,9 +1,11 @@
 package space.kscience.simba.engine
 
 import space.kscience.simba.state.EnvironmentState
+import space.kscience.simba.utils.Vector
 
 interface Engine<Env: EnvironmentState> {
     var started: Boolean
+    val dimensions: Vector
     val aggregators: MutableList<EngineAggregator>
 
     fun init()

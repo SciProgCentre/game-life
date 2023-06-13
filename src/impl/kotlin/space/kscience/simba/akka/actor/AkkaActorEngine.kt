@@ -15,7 +15,7 @@ import space.kscience.simba.state.*
 import space.kscience.simba.utils.Vector
 
 class AkkaActorEngine<State: ObjectState<State, Env>, Env: EnvironmentState>(
-    private val dimensions: Vector,
+    override val dimensions: Vector,
     private val neighborsIndices: Set<Vector>,
     config: Config = ConfigFactory.load(),
     val init: (Vector) -> State,

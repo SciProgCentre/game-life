@@ -1,8 +1,5 @@
 package space.kscience.simba.simulation
 
-import io.ktor.client.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -21,19 +18,17 @@ import space.kscience.simba.utils.Vector
 @kotlinx.serialization.Serializable
 data class ActorMitosisState(val vectorId: Vector, val colorIntensity: Double)
 
-class Mitosis(private val width: Int, private val height: Int, private val cellSize: Int): GameSystem {
-    override val name: String = "Mitosis"
-
-    private lateinit var context: CanvasRenderingContext2D
-    private val endpoint = window.location.origin
-    private val jsonClient = HttpClient {
-        install(JsonFeature) { serializer = KotlinxSerializer() }
+class Mitosis(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem() {
+    companion object {
+        const val name: String = "mitosis"
     }
 
+    private lateinit var context: CanvasRenderingContext2D
     private var iteration = 0L
+    private var finishedPreviousRender = true
 
     private suspend fun getLifeData(iteration: Long): List<ActorMitosisState> {
-        return jsonClient.get("$endpoint/status/mitosis/$iteration")
+        return jsonClient.get("$endpoint/status/$name/$iteration")
     }
 
     override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
@@ -44,7 +39,11 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
                 +"Start"
             }.onclick = {
                 (document.getElementById("next") as HTMLButtonElement).disabled = true
-                window.setInterval({ scope.launch { render(++iteration) } }, 500)
+                window.setInterval({
+                    if (finishedPreviousRender) {
+                        scope.launch { render(++iteration) }
+                    }
+                }, 1000 / 60)
             }
 
             button {
@@ -56,7 +55,7 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
 
     override fun initializeCanvas(canvas: HTMLCanvasElement) {
         context = canvas.getContext("2d") as CanvasRenderingContext2D
-        context.canvas.width  = width * cellSize
+        context.canvas.width = width * cellSize
         context.canvas.height = height * cellSize
         document.body!!.appendChild(canvas)
     }
@@ -66,6 +65,7 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
     }
 
     override suspend fun render(iteration: Long) {
+        finishedPreviousRender = false
         val field = getLifeData(iteration)
         val doubleSize = cellSize.toDouble()
         field.forEach {
@@ -74,5 +74,6 @@ class Mitosis(private val width: Int, private val height: Int, private val cellS
             context.fillStyle = "#00${color.fillZero()}00"
             context.fillRect(i * doubleSize, j * doubleSize, doubleSize, doubleSize)
         }
+        finishedPreviousRender = true
     }
 }

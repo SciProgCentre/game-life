@@ -1,8 +1,5 @@
 package space.kscience.simba.simulation
 
-import io.ktor.client.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.*
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -21,19 +18,16 @@ import org.w3c.dom.HTMLElement
 @Serializable
 class ActorGameOfLifeState(val i: Int, val j: Int, val isAlive: Boolean)
 
-class GameOfLife(private val width: Int, private val height: Int, private val cellSize: Int): GameSystem {
-    override val name: String = "Game Of Life"
-
-    private lateinit var context: CanvasRenderingContext2D
-    private val endpoint = window.location.origin
-    private val jsonClient = HttpClient {
-        install(JsonFeature) { serializer = KotlinxSerializer() }
+class GameOfLife(private val width: Int, private val height: Int, private val cellSize: Int) : GameSystem() {
+    companion object {
+        const val name: String = "gameOfLife"
     }
 
+    private lateinit var context: CanvasRenderingContext2D
     private var iteration = 0L
 
     private suspend fun getLifeData(iteration: Long): List<ActorGameOfLifeState> {
-        return jsonClient.get("$endpoint/status/gameOfLife/$iteration")
+        return jsonClient.get("$endpoint/status/$name/$iteration")
     }
 
     override fun initializeControls(panel: HTMLElement, scope: CoroutineScope) {
