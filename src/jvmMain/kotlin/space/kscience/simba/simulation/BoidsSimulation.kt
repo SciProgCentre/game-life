@@ -10,7 +10,10 @@ import space.kscience.simba.state.BoidsEnvironment
 import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
-class BoidsSimulation: Simulation<ActorBoidsState, BoidsEnvironment>("boids") {
+/**
+ * This simulation imitate the flocking behaviour of birds, known as boids.
+ */
+class BoidsSimulation : Simulation<ActorBoidsState, BoidsEnvironment>("boids") {
     private val random = Random(0)
     private val env = BoidsEnvironment()
     private val n = 100

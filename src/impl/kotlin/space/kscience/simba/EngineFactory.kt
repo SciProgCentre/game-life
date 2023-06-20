@@ -7,7 +7,10 @@ import space.kscience.simba.utils.Vector
 
 object EngineFactory {
     // TODO wrap all parameters into Config and create builder
-    fun <State: ObjectState<State, Env>, Env: EnvironmentState> createEngine(
+    /**
+     * Use this method to get some implementation of `space.kscience.simba.engine.Engine`.
+     */
+    fun <State : ObjectState<State, Env>, Env : EnvironmentState> createEngine(
         dimensions: Vector,
         neighborsIndices: Set<Vector>,
         init: (Vector) -> State,

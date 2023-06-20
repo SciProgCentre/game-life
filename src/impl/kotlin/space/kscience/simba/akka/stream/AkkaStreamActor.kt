@@ -25,10 +25,10 @@ import kotlin.coroutines.CoroutineContext
  * actor will suspend. The problem wit such approach is that we can wait for slow agent while there are already
  * some data to analyze.
  */
-class AkkaStreamActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
+class AkkaStreamActor<State : ObjectState<State, Env>, Env : EnvironmentState>(
     private val system: ActorSystem<Void>,
     private val engine: AkkaStreamEngine<State, Env>,
-): Actor, CoroutineScope {
+) : Actor, CoroutineScope {
     private lateinit var cell: Cell<State, Env>
     private var environment: Env? = null
 
@@ -87,7 +87,7 @@ class AkkaStreamActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
         if (cell.isReadyForIteration(environment, neighbours.size)) {
             launch {
                 val newCell = cell.iterate(environment)
-                handleWithoutResendingToEngine(UpdateSelfState(newCell.state, timestamp))
+                handleWithoutResendingToEngine(UpdateSelfState(newCell.state))
             }
         }
     }

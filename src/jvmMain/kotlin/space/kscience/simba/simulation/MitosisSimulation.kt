@@ -7,7 +7,11 @@ import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
 // original work https://github.com/MaxRobinsonTheGreat/NeuralPatterns
-class MitosisSimulation: Simulation<ActorMitosisState, EnvironmentState>("mitosis") {
+/**
+ * This simulation is basically a convolution with different parameters. Changing these parameters we can get something
+ * that is pretty much similar to vital activity of living cells, for example mitosis process.
+ */
+class MitosisSimulation : Simulation<ActorMitosisState, EnvironmentState>("mitosis") {
     private val random = Random(0)
     private val n = 100
     private val m = 100

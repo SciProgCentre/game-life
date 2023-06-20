@@ -6,7 +6,10 @@ import space.kscience.simba.state.*
 import space.kscience.simba.aggregators.PrintAggregator
 import kotlin.random.Random
 
-class GameOfLifeSimulation: Simulation<ActorGameOfLifeState, EnvironmentState>("gameOfLife") {
+/**
+ * This is simulation for classic Conway's "Game of Life".
+ */
+class GameOfLifeSimulation : Simulation<ActorGameOfLifeState, EnvironmentState>("gameOfLife") {
     private val random = Random(0)
     private val n = 10
     private val m = 10

@@ -25,7 +25,7 @@ import kotlin.coroutines.CoroutineContext
 class CellActor(
     private val mainActorRef: ActorRef<MainActorMessage>,
     internal val entityId: String
-): Actor {
+) : Actor {
     @Transient
     private lateinit var entityRef: EntityRef<Message>
 
@@ -48,7 +48,7 @@ class CellActor(
     }
 }
 
-internal data class PersistentState<State : ObjectState<State, Env>, Env: EnvironmentState>(
+internal data class PersistentState<State : ObjectState<State, Env>, Env : EnvironmentState>(
     val cell: Cell<State, Env>,
     val timestamp: Long = -1L,
     val iterations: Int = 0,
@@ -58,11 +58,11 @@ internal data class PersistentState<State : ObjectState<State, Env>, Env: Enviro
     val environment: Env? = null,
 )
 
-internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentState>(
+internal class EventAkkaActor<State : ObjectState<State, Env>, Env : EnvironmentState>(
     private val context: ActorContext<Message>,
     private val entityId: String,
     persistenceId: PersistenceId
-): EventSourcedBehavior<Message, Message, PersistentState<State, Env>>(persistenceId), CoroutineScope {
+) : EventSourcedBehavior<Message, Message, PersistentState<State, Env>>(persistenceId), CoroutineScope {
     override val coroutineContext: CoroutineContext = Dispatchers.Unconfined
     private val log = context.system.log()
     private var inRecovery = true
@@ -185,7 +185,7 @@ internal class EventAkkaActor<State : ObjectState<State, Env>, Env: EnvironmentS
             // next command unconditionally. When recovery process begin, we will recalculate state and send new
             // `UpdateSelfState` message (not the stored one). But first of all, we don't have such option and,
             // second, we can't handle new incoming requests while in recovery state, so it will not work.
-            doIfRecovered { context.self.tell(UpdateSelfState(newCell.state, oldState.timestamp)) }
+            doIfRecovered { context.self.tell(UpdateSelfState(newCell.state)) }
             info(oldState, "New state \"${newCell.state}\" was created")
         }
         return newState

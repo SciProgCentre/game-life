@@ -12,7 +12,12 @@ import space.kscience.simba.state.*
 import space.kscience.simba.utils.SimulationSettings
 import kotlin.random.Random
 
-class SnakeLearningSimulation: Simulation<ActorSnakeState, SnakeEnvironment>("snake") {
+/**
+ * In this simulation we are trying to imitate reinforcement learning algorithm for "Snake" game. We run `n` agents
+ * and each of them plays its own random version of the game. After one iteration cycle we absorb all information
+ * that agents learned, "combine" it and pass back to agents, then process repeats.
+ */
+class SnakeLearningSimulation : Simulation<ActorSnakeState, SnakeEnvironment>("snake") {
     private val actorsCount = 30
     private val random = Random(0)
     private val initEnv = SnakeEnvironment()

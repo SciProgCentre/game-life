@@ -10,12 +10,13 @@ import space.kscience.simba.utils.Vector
 import kotlin.coroutines.CoroutineContext
 
 @OptIn(ObsoleteCoroutinesApi::class)
-class CoroutinesCellActor<State: ObjectState<State, Env>, Env: EnvironmentState>(
+class CoroutinesCellActor<State : ObjectState<State, Env>, Env : EnvironmentState>(
     // actors in coroutines can't run on different machines, so it is safe to use ref to engine here
     private val engine: CoroutinesActorEngine<State, Env>,
     override val coroutineContext: CoroutineContext,
 ) : Actor, CoroutineScope {
     private val debug = false
+
     private inner class Log {
         inline fun debug(value: String, time: Long, index: Vector) {
             if (!debug) return
@@ -78,7 +79,7 @@ class CoroutinesCellActor<State: ObjectState<State, Env>, Env: EnvironmentState>
             if (internalState.isReadyForIteration(env, neighbours.size)) {
                 launch {
                     val newCell = internalState.iterate(env)
-                    handleWithoutResendingToEngine(UpdateSelfState(newCell.state, timestamp))
+                    handleWithoutResendingToEngine(UpdateSelfState(newCell.state))
                 }
             }
         }
